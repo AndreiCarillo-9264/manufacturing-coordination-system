@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ChatHistory extends Model
+class Conversation extends Model
 {
     protected $fillable = [
         'user_id',
-        'user_message',
-        'ai_response',
+        'title',
+        'is_active',
     ];
 
     protected $casts = [
+        'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -22,8 +23,8 @@ class ChatHistory extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function conversation()
+    public function messages()
     {
-        return $this->belongsTo(Conversation::class);
+        return $this->hasMany(ChatHistory::class, 'conversation_id');
     }
 }

@@ -105,8 +105,6 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('role:admin,production')->group(function () {
         Route::resource('transfers', TransferController::class);
-        // → provides: index, create, store, show, edit, update, destroy
-        // Requires: Job Order must be in "approved" status
     });
 
     /*
@@ -116,8 +114,6 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('role:admin,inventory')->group(function () {
         Route::resource('actual-inventories', ActualInventoryController::class);
-        // → provides: index, create, store, show, edit, update, destroy
-        // Manual physical inventory counts
     });
 
     /*
@@ -129,9 +125,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('finished-goods', FinishedGoodController::class, [
             'only' => ['index', 'show', 'edit', 'update']
         ]);
-        // → provides: index, show, edit, update (no create/store/destroy)
-        // Finished goods are created AUTOMATICALLY when Transfers are recorded
-        // Users can only view and adjust inventory counts
     });
 
     /*
@@ -141,8 +134,6 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('role:admin,logistics')->group(function () {
         Route::resource('delivery-schedules', DeliveryScheduleController::class);
-        // → provides: index, create, store, show, edit, update, destroy
-        // Requires: Job Order must be in "approved", "in_progress", or "completed" status
 
         Route::post('delivery-schedules/{deliverySchedule}/mark-delivered',
             [DeliveryScheduleController::class, 'markDelivered'])
@@ -180,12 +171,24 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | AI Assistant
+    | AI Assistant with Conversation Management
     |--------------------------------------------------------------------------
     */
     Route::prefix('ai-assistant')->name('ai-assistant.')->group(function () {
+        // Main interface
         Route::get('/', [AIAssistantController::class, 'fullscreen'])->name('index');
+        
+        // Chat endpoint
         Route::post('/chat', [AIAssistantController::class, 'chat'])->name('chat');
+        
+        // Conversation management
+        Route::get('/conversations', [AIAssistantController::class, 'getConversations'])->name('conversations');
+        Route::get('/conversation/active', [AIAssistantController::class, 'getActiveConversation'])->name('conversation.active');
+        Route::post('/conversation', [AIAssistantController::class, 'createConversation'])->name('conversation.create');
+        Route::get('/conversation/{conversation}/messages', [AIAssistantController::class, 'getConversationMessages'])->name('conversation.messages');
+        Route::delete('/conversation/{conversation}', [AIAssistantController::class, 'deleteConversation'])->name('conversation.delete');
+        
+        // Legacy endpoints (for backward compatibility)
         Route::get('/history', [AIAssistantController::class, 'history'])->name('history');
         Route::delete('/history', [AIAssistantController::class, 'clearHistory'])->name('clear-history');
     });
