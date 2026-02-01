@@ -14,8 +14,6 @@ class Conversation extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
     ];
 
     public function user()
@@ -25,6 +23,6 @@ class Conversation extends Model
 
     public function messages()
     {
-        return $this->hasMany(ChatHistory::class, 'conversation_id');
+        return $this->hasMany(ChatHistory::class);
     }
 }

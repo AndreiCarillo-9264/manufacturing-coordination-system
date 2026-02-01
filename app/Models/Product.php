@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -12,87 +15,72 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'customer',
-        'encoded_by_user_id',
         'product_code',
         'model_name',
         'description',
-        'date_encoded',
+        'customer',
         'specs',
         'dimension',
-        'moq',
+        'location',
+        'pc',
         'uom',
+        'moq',
         'currency',
         'selling_price',
-        'rsqf_number',
-        'remarks_po',
         'mc',
         'diff',
         'mu',
-        'location',
-        'pc',
+        'rsqf_number',
+        'remarks',
+        'encoded_by_user_id',
+        'date_encoded',
     ];
 
     protected $casts = [
-        'date_encoded'   => 'date',
-        'selling_price'  => 'decimal:2',
-        'mc'             => 'decimal:2',
-        'diff'           => 'decimal:2',
-        'mu'             => 'decimal:2',
+        'date_encoded' => 'date',
+        'selling_price' => 'decimal:2',
+        'mc' => 'decimal:2',
+        'diff' => 'decimal:2',
+        'mu' => 'decimal:2',
+        'moq' => 'integer',
     ];
 
-    /**
-     * Accessors to include calculated fields in array/JSON output
-     */
-    protected $appends = [];
-
     // Relationships
-    public function encodedBy()
+    public function encodedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'encoded_by_user_id');
     }
 
-    public function jobOrders()
+    public function jobOrders(): HasMany
     {
         return $this->hasMany(JobOrder::class);
     }
 
-    public function finishedGood()
+    public function finishedGood(): HasOne
     {
         return $this->hasOne(FinishedGood::class);
     }
 
-    public function actualInventories()
+    public function actualInventories(): HasMany
     {
         return $this->hasMany(ActualInventory::class);
     }
 
-    public function deliverySchedules()
+    public function deliverySchedules(): HasMany
     {
         return $this->hasMany(DeliverySchedule::class);
     }
 
-    public function transfers()
+    public function transfers(): HasMany
     {
         return $this->hasMany(Transfer::class);
     }
 
-    /**
-     * Boot method – auto-generation and defaults
-     */
-    protected static function booted()
+    // Boot method
+    protected static function booted(): void
     {
-        // Auto-create related FinishedGood record
-        static::created(function ($product) {
-            FinishedGood::create([
-                'product_id'     => $product->id,
-                'cur_sell_price' => $product->selling_price ?? 0,
-            ]);
-        });
-
-        // Auto-generate product_code, date_encoded, encoded_by before create
-        static::creating(function ($product) {
-            // Auto product_code: PRD-YYYY-NNNN
+        static::creating(function (Product $product) {
+            // Auto-generate product_code: PRD-YYYY-NNNN
             if (empty($product->product_code)) {
                 $year = Carbon::now()->year;
 
@@ -110,15 +98,36 @@ class Product extends Model
                 $product->product_code = sprintf("PRD-%d-%04d", $year, $nextNumber);
             }
 
-            // Auto date_encoded = today
+            // Auto set date_encoded
             if (empty($product->date_encoded)) {
                 $product->date_encoded = Carbon::today();
             }
 
-            // Auto encoded_by = current user
-            if (auth()->check()) {
+            // Auto set encoded_by
+            if (empty($product->encoded_by_user_id) && auth()->check()) {
                 $product->encoded_by_user_id = auth()->id();
             }
         });
+
+        // Auto-create related FinishedGood record
+        static::created(function (Product $product) {
+            FinishedGood::create([
+                'product_id' => $product->id,
+            ]);
+        });
+    }
+
+    // Sequence helper
+    public static function nextProductCode(): string
+    {
+        $year = Carbon::now()->year;
+        $last = static::where('product_code', 'like', "PRD-{$year}-%")->orderBy('product_code', 'desc')->first();
+        $nextNumber = 1;
+        if ($last) {
+            $parts = explode('-', $last->product_code);
+            $lastNumber = (int) end($parts);
+            $nextNumber = $lastNumber + 1;
+        }
+        return sprintf('PRD-%d-%04d', $year, $nextNumber);
     }
 }

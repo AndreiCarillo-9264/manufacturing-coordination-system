@@ -8,13 +8,13 @@ class ChatHistory extends Model
 {
     protected $fillable = [
         'user_id',
+        'conversation_id',
         'user_message',
         'ai_response',
     ];
 
     protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+
     ];
 
     public function user()

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -12,91 +13,136 @@ class FinishedGood extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'product_id', 'count_pc_area', 'beg', 'in_qty', 'out_qty',
-        'theo_end', 'remarks', 'buffer_stocks', 'cur_sell_price',
-        'beg_amt', 'in_amt', 'out_amt', 'end_amt', 'ending_count',
-        'uom3', 'variance_count', 'variance_amount', 'last_in_date',
-        'older_date', 'days', 'range_1_30', 'range_31_60',
-        'range_61_90', 'range_91_120', 'range_over_120'
+        'product_id',
+        'qty_beginning',
+        'qty_in',
+        'qty_out',
+        'qty_theoretical_ending',
+        'qty_actual_ending',
+        'qty_variance',
+        'qty_buffer_stock',
+        'qty_pc_area',
+        'amount_beginning',
+        'amount_in',
+        'amount_out',
+        'amount_ending',
+        'amount_variance',
+        'date_last_in',
+        'date_oldest',
+        'days_aging',
+        'aging_1_30_days',
+        'aging_31_60_days',
+        'aging_61_90_days',
+        'aging_91_120_days',
+        'aging_over_120_days',
+        'remarks',
     ];
 
     protected $casts = [
-        'last_in_date' => 'date',
-        'older_date' => 'date',
-        'cur_sell_price' => 'decimal:2',
-        'beg_amt' => 'decimal:2',
-        'in_amt' => 'decimal:2',
-        'out_amt' => 'decimal:2',
-        'end_amt' => 'decimal:2',
-        'variance_amount' => 'decimal:2',
+        'date_last_in' => 'date',
+        'date_oldest' => 'date',
+        'qty_beginning' => 'integer',
+        'qty_in' => 'integer',
+        'qty_out' => 'integer',
+        'qty_theoretical_ending' => 'integer',
+        'qty_actual_ending' => 'integer',
+        'qty_variance' => 'integer',
+        'qty_buffer_stock' => 'integer',
+        'qty_pc_area' => 'integer',
+        'amount_beginning' => 'decimal:2',
+        'amount_in' => 'decimal:2',
+        'amount_out' => 'decimal:2',
+        'amount_ending' => 'decimal:2',
+        'amount_variance' => 'decimal:2',
+        'days_aging' => 'integer',
+        'aging_1_30_days' => 'integer',
+        'aging_31_60_days' => 'integer',
+        'aging_61_90_days' => 'integer',
+        'aging_91_120_days' => 'integer',
+        'aging_over_120_days' => 'integer',
     ];
 
     // Relationships
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    // Accessors for calculated fields
-    public function getTheoEndAttribute()
+    // Helper methods
+    public function calculateTheoreticalEnding(): void
     {
-        return $this->beg + $this->in_qty - $this->out_qty;
+        $this->qty_theoretical_ending = $this->qty_beginning + $this->qty_in - $this->qty_out;
+        $this->save();
     }
 
-    public function getEndAmtAttribute()
+    public function calculateVariance(): void
     {
-        return $this->getTheoEndAttribute() * $this->cur_sell_price;
+        $this->qty_variance = $this->qty_actual_ending - $this->qty_theoretical_ending;
+        $this->save();
     }
 
-    public function getVarianceCountAttribute()
+    public function calculateAmountEnding(): void
     {
-        return $this->ending_count - $this->getTheoEndAttribute();
-    }
-
-    public function getVarianceAmountAttribute()
-    {
-        return $this->getVarianceCountAttribute() * $this->cur_sell_price;
-    }
-
-    public function getDaysAttribute()
-    {
-        if (!$this->last_in_date) {
-            return 0;
+        if ($this->product && $this->product->selling_price) {
+            $this->amount_ending = $this->qty_actual_ending * $this->product->selling_price;
+            $this->save();
         }
-        return Carbon::parse($this->last_in_date)->diffInDays(now());
     }
 
-    // Helper method to update aging ranges
-    public function updateAgingRanges()
+    public function calculateAmountVariance(): void
     {
-        $days = $this->getDaysAttribute();
+        if ($this->product && $this->product->selling_price) {
+            $this->amount_variance = $this->qty_variance * $this->product->selling_price;
+            $this->save();
+        }
+    }
+
+    public function calculateDaysAging(): void
+    {
+        if ($this->date_last_in) {
+            $this->days_aging = Carbon::parse($this->date_last_in)->diffInDays(now());
+            $this->save();
+        }
+    }
+
+    public function updateAgingRanges(): void
+    {
+        $this->calculateDaysAging();
         
-        $this->range_1_30 = 0;
-        $this->range_31_60 = 0;
-        $this->range_61_90 = 0;
-        $this->range_91_120 = 0;
-        $this->range_over_120 = 0;
+        $days = $this->days_aging;
+        $qty = $this->qty_actual_ending;
 
-        $qty = $this->ending_count;
+        // Reset all aging ranges
+        $this->aging_1_30_days = 0;
+        $this->aging_31_60_days = 0;
+        $this->aging_61_90_days = 0;
+        $this->aging_91_120_days = 0;
+        $this->aging_over_120_days = 0;
 
+        // Assign to appropriate range
         if ($days <= 30) {
-            $this->range_1_30 = $qty;
+            $this->aging_1_30_days = $qty;
         } elseif ($days <= 60) {
-            $this->range_31_60 = $qty;
+            $this->aging_31_60_days = $qty;
         } elseif ($days <= 90) {
-            $this->range_61_90 = $qty;
+            $this->aging_61_90_days = $qty;
         } elseif ($days <= 120) {
-            $this->range_91_120 = $qty;
+            $this->aging_91_120_days = $qty;
         } else {
-            $this->range_over_120 = $qty;
+            $this->aging_over_120_days = $qty;
         }
 
         $this->save();
     }
 
-    // Scope for low stock items
+    // Scopes
     public function scopeLowStock($query)
     {
-        return $query->whereColumn('ending_count', '<', 'buffer_stocks');
+        return $query->whereColumn('qty_actual_ending', '<', 'qty_buffer_stock');
+    }
+
+    public function scopeWithVariance($query)
+    {
+        return $query->where('qty_variance', '!=', 0);
     }
 }

@@ -12,23 +12,22 @@ class ActivityLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
+        'model_type',
+        'model_id',
         'action',
-        'user_id',          // causer
-        'model_type',       // subject type
-        'model_id',         // subject id
         'old_values',
         'new_values',
         'ip_address',
         'user_agent',
-        // you can add more: e.g. 'extra_properties' => 'array'
     ];
 
     protected $casts = [
-        'old_values'   => 'array',
-        'new_values'   => 'array',
-        // 'extra_properties' => 'array',  // ← optional future extension
+        'old_values' => 'array',
+        'new_values' => 'array',
     ];
 
+    // Relationships
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -36,6 +35,22 @@ class ActivityLog extends Model
 
     public function subject(): MorphTo
     {
-        return $this->morphTo('model', 'model_type', 'model_id');
+        return $this->morphTo('model');
+    }
+
+    // Scopes
+    public function scopeByUser($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeByAction($query, string $action)
+    {
+        return $query->where('action', $action);
+    }
+
+    public function scopeRecent($query, int $days = 7)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
     }
 }
