@@ -4,11 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Product;
-use App\Models\JobOrder;
-use App\Models\FinishedGood;
-use App\Models\ActualInventory;
-use App\Models\DeliverySchedule;
-use App\Models\Transfer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -56,6 +51,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
             'department' => 'logistics',
         ]);
+<<<<<<< HEAD
 
         // Seed sample data for testing
         $this->seedProducts();
@@ -470,5 +466,7 @@ class DatabaseSeeder extends Seeder
             'unit_selling_price' => 13.20,
             'total_amount' => 66000.00,
         ]);
+=======
+>>>>>>> parent of 4b3ed60 (enhanced the chatbot capability)
     }
 }

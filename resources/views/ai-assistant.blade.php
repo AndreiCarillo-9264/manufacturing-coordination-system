@@ -189,5 +189,9 @@ function exportChat() {
 @endsection
 
 @push('scripts')
+<<<<<<< HEAD
     <script src="{{ asset('js/ai-assistant-fullscreen-enchanced.js') }}"></script>
+=======
+    <script src="{{ asset('js/ai-assistant-fullscreen.js') }}"></script>
+>>>>>>> parent of 4b3ed60 (enhanced the chatbot capability)
 @endpush
