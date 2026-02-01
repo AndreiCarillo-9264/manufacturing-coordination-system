@@ -189,5 +189,5 @@ function exportChat() {
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/ai-assistant-fullscreen.js') }}"></script>
+    <script src="{{ asset('js/ai-assistant-fullscreen-enchanced.js') }}"></script>
 @endpush

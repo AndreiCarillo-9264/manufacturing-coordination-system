@@ -24,10 +24,28 @@ class AIAssistantController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->get();
                 
-            return view('ai-assistant', compact('conversations'));
+            // Determine active conversation (create default if none)
+            $activeConversation = Conversation::where('user_id', Auth::id())
+                ->where('is_active', true)
+                ->first();
+
+            if (! $activeConversation && $conversations->isNotEmpty()) {
+                $activeConversation = $conversations->first();
+            }
+
+            // Load chat history for the active conversation or an empty collection
+            if ($activeConversation) {
+                $chatHistory = ChatHistory::where('conversation_id', $activeConversation->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            } else {
+                $chatHistory = collect([]);
+            }
+
+            return view('ai-assistant', compact('conversations', 'chatHistory', 'activeConversation'));
         } catch (\Exception $e) {
             Log::error('Error loading AI assistant: ' . $e->getMessage());
-            return view('ai-assistant', ['conversations' => collect([])]);
+            return view('ai-assistant', ['conversations' => collect([]), 'chatHistory' => collect([])]);
         }
     }
     
