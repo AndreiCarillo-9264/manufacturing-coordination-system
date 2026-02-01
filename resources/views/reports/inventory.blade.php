@@ -63,22 +63,22 @@
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
                         {{ $item->product->model_name ?? $item->product->product_code ?? '—' }}
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-900">{{ $item->product->customer_name ?? '—' }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">{{ number_format($item->beginning_count) }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">{{ $item->product->customer ?? '—' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">{{ number_format($item->qty_beginning) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium
-                        {{ $item->ending_count < ($item->product->min_stock ?? 0) ? 'text-red-600' : 'text-gray-900' }}">
-                        {{ number_format($item->ending_count) }}
+                        {{ $item->qty_actual_ending < ($item->product->min_stock ?? 0) ? 'text-red-600' : 'text-gray-900' }}">
+                        {{ number_format($item->qty_actual_ending) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium
-                        {{ $item->variance_count != 0 ? 'text-orange-600' : 'text-gray-900' }}">
-                        {{ number_format($item->variance_count) }}
+                        {{ $item->qty_variance != 0 ? 'text-orange-600' : 'text-gray-900' }}">
+                        {{ number_format($item->qty_variance) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium
-                        {{ $item->variance_amount != 0 ? 'text-orange-600' : 'text-gray-900' }}">
-                        ₱{{ number_format($item->variance_amount, 2) }}
+                        {{ $item->amount_variance != 0 ? 'text-orange-600' : 'text-gray-900' }}">
+                        ₱{{ number_format($item->amount_variance, 2) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        ₱{{ number_format($item->end_amt, 2) }}
+                        ₱{{ number_format($item->amount_ending, 2) }}
                     </td>
                 </tr>
                 @empty

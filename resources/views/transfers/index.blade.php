@@ -72,17 +72,17 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0">
                 <tr>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PTT #</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PTT Number</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Section</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Transferred</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO #</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Number</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty Transferred</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivery Date</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Time Transfer</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Time Transferred</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Status</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Balance</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code/ID</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
@@ -101,10 +101,10 @@
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->section ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->date_transferred?->format('M d, Y') ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $transfer->jobOrder?->jo_number ?? '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap font-bold">{{ number_format($transfer->qty) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->delivery_date?->format('M d, Y') ?? '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap font-bold">{{ number_format($transfer->qty_transferred) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->date_delivery_scheduled?->format('M d, Y') ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($transfer->remarks, 25) ?? '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->transfer_time?->format('H:i') ?? '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->time_transferred?->format('H:i') ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">
                         @if($transfer->jobOrder?->status)
                         <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full
@@ -119,7 +119,7 @@
                         <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->jo_balance ?? '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->qty_jo_balance ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $transfer->product->product_code ?? $transfer->product->id ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->product->customer ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $transfer->product->model_name ?? '—' }}</td>

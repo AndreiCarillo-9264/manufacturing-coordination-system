@@ -11,16 +11,13 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    /**
-     * Job Orders Report View
-     */
     public function jobOrders(Request $request)
     {
         $query = JobOrder::with(['product', 'encodedBy']);
 
         // Apply filters
         if ($request->filled('customer')) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('customer', $request->customer);
             });
         }
@@ -40,24 +37,28 @@ class ReportController extends Controller
         $jobOrders = $query->orderBy('date_needed')->get();
 
         // Calculate totals
-        $totalQty = $jobOrders->sum('qty');
-        $totalAmount = $jobOrders->sum(function($jo) {
-            return $jo->qty * $jo->product->selling_price;
+        $totalQty = $jobOrders->sum('qty_ordered');
+        $totalAmount = $jobOrders->sum(function ($jo) {
+            return $jo->qty_ordered * $jo->product->selling_price;
         });
 
-        return view('reports.job-orders', compact('jobOrders', 'totalQty', 'totalAmount'));
+        // Get customers for filter
+        $customers = Product::whereNotNull('customer')
+            ->distinct()
+            ->pluck('customer')
+            ->sort()
+            ->values();
+
+        return view('reports.job-orders', compact('jobOrders', 'totalQty', 'totalAmount', 'customers'));
     }
 
-    /**
-     * Generate Job Orders PDF Report
-     */
     public function jobOrdersPdf(Request $request)
     {
         $query = JobOrder::with(['product', 'encodedBy']);
 
         // Apply same filters as above
         if ($request->filled('customer')) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('customer', $request->customer);
             });
         }
@@ -77,9 +78,9 @@ class ReportController extends Controller
         $jobOrders = $query->orderBy('date_needed')->get();
 
         // Calculate totals
-        $totalQty = $jobOrders->sum('qty');
-        $totalAmount = $jobOrders->sum(function($jo) {
-            return $jo->qty * $jo->product->selling_price;
+        $totalQty = $jobOrders->sum('qty_ordered');
+        $totalAmount = $jobOrders->sum(function ($jo) {
+            return $jo->qty_ordered * $jo->product->selling_price;
         });
 
         $filters = [
@@ -90,13 +91,10 @@ class ReportController extends Controller
         ];
 
         $pdf = Pdf::loadView('reports.pdf.job-orders', compact('jobOrders', 'totalQty', 'totalAmount', 'filters'));
-        
+
         return $pdf->download('job-orders-report-' . now()->format('Y-m-d') . '.pdf');
     }
 
-    /**
-     * Inventory Report View
-     */
     public function inventory(Request $request)
     {
         $query = FinishedGood::with('product');
@@ -108,31 +106,36 @@ class ReportController extends Controller
 
         // Filter by customer
         if ($request->filled('customer')) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('customer', $request->customer);
             });
         }
 
-        $finishedGoods = $query->orderBy('ending_count', 'desc')->get();
+        $finishedGoods = $query->orderBy('qty_actual_ending', 'desc')->get();
 
         // Calculate totals
-        $totalStock = $finishedGoods->sum('ending_count');
-        $totalValue = $finishedGoods->sum('end_amt');
-        $totalVariance = $finishedGoods->sum('variance_count');
-        $totalVarianceAmount = $finishedGoods->sum('variance_amount');
+        $totalStock = $finishedGoods->sum('qty_actual_ending');
+        $totalValue = $finishedGoods->sum('amount_ending');
+        $totalVariance = $finishedGoods->sum('qty_variance');
+        $totalVarianceAmount = $finishedGoods->sum('amount_variance');
+
+        // Get customers for filter
+        $customers = Product::whereNotNull('customer')
+            ->distinct()
+            ->pluck('customer')
+            ->sort()
+            ->values();
 
         return view('reports.inventory', compact(
-            'finishedGoods', 
-            'totalStock', 
-            'totalValue', 
+            'finishedGoods',
+            'totalStock',
+            'totalValue',
             'totalVariance',
-            'totalVarianceAmount'
+            'totalVarianceAmount',
+            'customers'
         ));
     }
 
-    /**
-     * Generate Inventory PDF Report
-     */
     public function inventoryPdf(Request $request)
     {
         $query = FinishedGood::with('product');
@@ -143,18 +146,18 @@ class ReportController extends Controller
         }
 
         if ($request->filled('customer')) {
-            $query->whereHas('product', function($q) use ($request) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('customer', $request->customer);
             });
         }
 
-        $finishedGoods = $query->orderBy('ending_count', 'desc')->get();
+        $finishedGoods = $query->orderBy('qty_actual_ending', 'desc')->get();
 
         // Calculate totals
-        $totalStock = $finishedGoods->sum('ending_count');
-        $totalValue = $finishedGoods->sum('end_amt');
-        $totalVariance = $finishedGoods->sum('variance_count');
-        $totalVarianceAmount = $finishedGoods->sum('variance_amount');
+        $totalStock = $finishedGoods->sum('qty_actual_ending');
+        $totalValue = $finishedGoods->sum('amount_ending');
+        $totalVariance = $finishedGoods->sum('qty_variance');
+        $totalVarianceAmount = $finishedGoods->sum('amount_variance');
 
         $filters = [
             'customer' => $request->filled('customer') ? $request->customer : 'All',
@@ -162,14 +165,47 @@ class ReportController extends Controller
         ];
 
         $pdf = Pdf::loadView('reports.pdf.inventory', compact(
-            'finishedGoods', 
-            'totalStock', 
+            'finishedGoods',
+            'totalStock',
             'totalValue',
             'totalVariance',
             'totalVarianceAmount',
             'filters'
         ));
-        
+
         return $pdf->download('inventory-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function aging(Request $request)
+    {
+        $query = FinishedGood::with('product')
+            ->where('qty_actual_ending', '>', 0);
+
+        // Filter by customer
+        if ($request->filled('customer')) {
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('customer', $request->customer);
+            });
+        }
+
+        $finishedGoods = $query->orderBy('days_aging', 'desc')->get();
+
+        // Calculate aging totals
+        $agingTotals = [
+            '1-30' => $finishedGoods->sum('aging_1_30_days'),
+            '31-60' => $finishedGoods->sum('aging_31_60_days'),
+            '61-90' => $finishedGoods->sum('aging_61_90_days'),
+            '91-120' => $finishedGoods->sum('aging_91_120_days'),
+            'over_120' => $finishedGoods->sum('aging_over_120_days'),
+        ];
+
+        // Get customers for filter
+        $customers = Product::whereNotNull('customer')
+            ->distinct()
+            ->pluck('customer')
+            ->sort()
+            ->values();
+
+        return view('reports.aging', compact('finishedGoods', 'agingTotals', 'customers'));
     }
 }

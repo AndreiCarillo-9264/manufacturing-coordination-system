@@ -34,7 +34,7 @@
                         <p class="text-sm text-gray-600">{{ $fg->product->product_code ?? 'N/A' }}</p>
                     </div>
                     <span class="text-red-700 font-bold text-lg">
-                        {{ number_format($fg->ending_count) }} / {{ $fg->buffer_stocks ?? '?' }}
+                        {{ number_format($fg->qty_actual_ending) }} / {{ $fg->qty_buffer_stock ?? '?' }}
                     </span>
                 </div>
             @empty
@@ -68,7 +68,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {{ $jo->product->model_name ?? $jo->product->product_code ?? 'N/A' }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ number_format($jo->qty) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ number_format($jo->qty_ordered) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $jo->encodedBy->name ?? '—' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full
@@ -108,11 +108,11 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($recentDeliveries as $ds)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $ds->date->format('M d, Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $ds->delivery_date->format('M d, Y') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {{ $ds->product->model_name ?? $ds->product->product_code ?? 'N/A' }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ number_format($ds->qty) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ number_format($ds->qty_scheduled) }} {{ $ds->product->uom }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ds->jobOrder->jo_number ?? '-' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $ds->jobOrder?->encodedBy->name ?? '—' }}</td>
                     </tr>

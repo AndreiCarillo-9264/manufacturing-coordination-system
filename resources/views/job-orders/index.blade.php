@@ -35,11 +35,11 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">JO Status</label>
-                    <select name="jo_status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <select name="fulfillment_status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         <option value="">All JO Status</option>
-                        <option value="JO Full" {{ request('jo_status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
-                        <option value="Balance" {{ request('jo_status') == 'Balance' ? 'selected' : '' }}>Balance</option>
-                        <option value="Excess" {{ request('jo_status') == 'Excess' ? 'selected' : '' }}>Excess</option>
+                        <option value="JO Full" {{ request('fulfillment_status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
+                        <option value="Balance" {{ request('fulfillment_status') == 'Balance' ? 'selected' : '' }}>Balance</option>
+                        <option value="Excess" {{ request('fulfillment_status') == 'Excess' ? 'selected' : '' }}>Excess</option>
                     </select>
                 </div>
 
@@ -113,12 +113,12 @@
                 @forelse($jobOrders as $jo)
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-5 py-4 text-sm font-medium whitespace-nowrap">
-                        @if($jo->jo_status)
+                        @if($jo->fulfillment_status)
                         <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full
-                            {{ $jo->jo_status === 'JO Full' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' : '' }}
-                            {{ $jo->jo_status === 'Balance' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' : '' }}
-                            {{ $jo->jo_status === 'Excess'  ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' : '' }}">
-                            {{ $jo->jo_status }}
+                            {{ $jo->fulfillment_status === 'JO Full' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' : '' }}
+                            {{ $jo->fulfillment_status === 'Balance' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' : '' }}
+                            {{ $jo->fulfillment_status === 'Excess'  ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' : '' }}">
+                            {{ $jo->fulfillment_status }}
                         </span>
                         @else
                         <span class="text-gray-400">—</span>
@@ -132,8 +132,8 @@
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->model_name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($jo->product->description ?? '', 35) }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->dimension ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap font-semibold">{{ number_format($jo->qty ?? 0) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->uom ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap font-semibold">{{ number_format($jo->qty_ordered ?? 0) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->uom ?? $jo->uom ?? '—' }}</td> 
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->encodedBy?->name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($jo->remarks ?? '', 30) }}</td>
                     <td class="px-5 py-4 text-sm whitespace-nowrap sticky right-0 bg-white shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] z-10">

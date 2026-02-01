@@ -58,7 +58,7 @@
                 <tr>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model Name</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Encoded</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Specs</th>
@@ -68,7 +68,7 @@
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Currency</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Selling Price</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">RSQF #</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks PO</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Location</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Encoded By</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
@@ -92,7 +92,7 @@
                         {{ number_format($product->selling_price ?? 0, 2) }}
                     </td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $product->rsqf_number ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($product->remarks_po ?? '', 25) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($product->remarks ?? '', 25) }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $product->location ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $product->encodedBy?->name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm whitespace-nowrap sticky right-0 bg-white shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] z-10">

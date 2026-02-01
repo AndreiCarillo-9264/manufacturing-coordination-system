@@ -24,8 +24,15 @@
         <!-- Read-only system fields -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-blue-50/40 p-5 rounded-lg border border-blue-100">
             <div>
-                <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">JO Number</label>
-                <div class="mt-1.5 text-base font-mono font-medium text-gray-900">{{ $jobOrder->jo_number }}</div>
+                <label for="jo_number" class="block text-sm font-medium text-gray-700 mb-1.5">JO Number</label>
+                <input type="text" id="jo_number" name="jo_number" value="{{ old('jo_number', $jobOrder->jo_number) }}" 
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('jo_number') border-red-500 @enderror">
+                @error('jo_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div id="jo_number_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="jo_number_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="jo_number_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="jo_number_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">Date Encoded</label>
@@ -45,7 +52,7 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">JO Balance (Calculated)</label>
-                <div class="mt-1.5 text-base text-gray-900">{{ $jobOrder->jo_balance }}</div>
+                <div class="mt-1.5 text-base text-gray-900">{{ $jobOrder->qty_balance }}</div>
             </div>
         </div>
 
@@ -54,9 +61,14 @@
             <!-- PO Number -->
             <div>
                 <label for="po_number" class="block text-sm font-medium text-gray-700 mb-1.5">PO Number *</label>
-                <input type="text" name="po_number" value="{{ old('po_number', $jobOrder->po_number) }}"
+                <input type="text" id="po_number" name="po_number" value="{{ old('po_number', $jobOrder->po_number) }}"
                        placeholder="e.g. PO-2024-001" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('po_number') border-red-500 @enderror">
                 @error('po_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div id="po_number_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="po_number_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="po_number_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="po_number_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
             </div>
 
             <!-- Date Needed -->
@@ -74,19 +86,19 @@
                     <option value="">— Select Product —</option>
                     @foreach($products as $product)
                         <option value="{{ $product->id }}" {{ old('product_id', $jobOrder->product_id) == $product->id ? 'selected' : '' }}>
-                            {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer_name ?? 'N/A' }})
+                            {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer ?? 'N/A' }})
                         </option>
                     @endforeach
                 </select>
                 @error('product_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            <!-- Quantity -->
+            <!-- Quantity Ordered -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" name="qty" value="{{ old('qty', $jobOrder->qty) }}" min="1"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="qty_ordered" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Ordered *</label>
+                <input type="number" name="qty_ordered" value="{{ old('qty_ordered', $jobOrder->qty_ordered) }}" min="1"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('qty_ordered') border-red-500 @enderror">
+                @error('qty_ordered') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM -->
@@ -127,4 +139,63 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const joInput = document.getElementById('jo_number');
+    const poInput = document.getElementById('po_number');
+    const dateNeeded = document.querySelector('input[name="date_needed"]');
+
+    async function fetchJoPo() {
+        try {
+            const date = dateNeeded?.value || '';
+            const resp = await fetch('/api/sequences/next?type=job_order' + (date ? '&date=' + encodeURIComponent(date) : ''));
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            // JO number suggestion
+            const joSuggestionContainer = document.getElementById('jo_number_suggestion');
+            const joSuggestionText = document.getElementById('jo_number_suggestion_text');
+            const joUseBtn = document.getElementById('jo_number_use_suggestion');
+            if (joSuggestionText && data.jo_number) {
+                joSuggestionText.textContent = data.jo_number;
+                joSuggestionContainer.classList.remove('hidden');
+                joUseBtn.disabled = false;
+            }
+
+            // PO number suggestion
+            const poSuggestionContainer = document.getElementById('po_number_suggestion');
+            const poSuggestionText = document.getElementById('po_number_suggestion_text');
+            const poUseBtn = document.getElementById('po_number_use_suggestion');
+            if (poSuggestionText && data.po_number) {
+                poSuggestionText.textContent = data.po_number;
+                poSuggestionContainer.classList.remove('hidden');
+                poUseBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    fetchJoPo();
+    dateNeeded?.addEventListener('change', fetchJoPo);
+
+    // Wire up use/regenerate buttons
+    document.getElementById('jo_number_use_suggestion').addEventListener('click', function() {
+        const txt = document.getElementById('jo_number_suggestion_text').textContent;
+        if (txt) {
+            joInput.value = txt;
+            document.getElementById('jo_number_suggestion').classList.add('hidden');
+        }
+    });
+    document.getElementById('jo_number_regenerate').addEventListener('click', fetchJoPo);
+
+    document.getElementById('po_number_use_suggestion').addEventListener('click', function() {
+        const txt = document.getElementById('po_number_suggestion_text').textContent;
+        if (txt) {
+            poInput.value = txt;
+            document.getElementById('po_number_suggestion').classList.add('hidden');
+        }
+    });
+    document.getElementById('po_number_regenerate').addEventListener('click', fetchJoPo);
+});
+</script>
 @endsection

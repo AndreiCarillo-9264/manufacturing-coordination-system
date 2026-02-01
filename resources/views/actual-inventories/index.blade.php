@@ -60,8 +60,8 @@
             <thead class="bg-gray-50 sticky top-0 z-20">
                 <tr>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Tag Number</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code / ID</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">FG Qty</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty Counted</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">UOM</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
@@ -70,7 +70,7 @@
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Location</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Counted</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Verified</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remark</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Encoded By</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Encoded</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
@@ -78,11 +78,11 @@
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
                 @forelse($actualInventories as $inv)
-                <tr class="{{ $inv->fg_qty < 100 ? 'bg-red-50' : ($inv->fg_qty <= 500 ? 'bg-yellow-50' : '') }} hover:bg-gray-50 transition-colors">
+                <tr class="{{ $inv->qty_counted < 100 ? 'bg-red-50' : ($inv->qty_counted <= 500 ? 'bg-yellow-50' : '') }} hover:bg-gray-50 transition-colors">
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $inv->tag_number }}</td>
-                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $inv->product->product_code ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm font-bold text-gray-900 whitespace-nowrap">{{ number_format($inv->fg_qty) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $inv->uom ?? $inv->product->uom ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $inv->product->product_code ?? $inv->product->id ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm font-bold text-gray-900 whitespace-nowrap">{{ number_format($inv->qty_counted) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $inv->product->uom ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $inv->product->customer ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $inv->product->model_name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($inv->product->description ?? '', 40) }}</td>

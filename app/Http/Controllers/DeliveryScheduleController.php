@@ -17,13 +17,15 @@ class DeliveryScheduleController extends Controller
     {
         $this->authorize('viewAny', DeliverySchedule::class);
 
-        $query = DeliverySchedule::with(['jobOrder', 'product', 'createdBy']);
+        $query = DeliverySchedule::with(['jobOrder.product', 'product']);
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('ds_delivery_code', 'like', "%{$search}%")
-                  ->orWhere('po_number', 'like', "%{$search}%");
+                $q->where('delivery_code', 'like', "%{$search}%")
+                    ->orWhereHas('jobOrder', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -31,8 +33,8 @@ class DeliveryScheduleController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
-        if ($request->filled('ds_status')) {
-            $query->where('ds_status', $request->ds_status);
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
         if ($request->has('delayed')) {
@@ -40,13 +42,14 @@ class DeliveryScheduleController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->where('date', '>=', $request->date_from);
+            $query->where('delivery_date', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
-            $query->where('date', '<=', $request->date_to);
+            $query->where('delivery_date', '<=', $request->date_to);
         }
 
-        $deliverySchedules = $query->latest('date')->paginate(15);
+        $deliverySchedules = $query->latest('delivery_date')->paginate(15);
+        
         $products = Product::select('id', 'product_code', 'model_name')
             ->orderByRaw("COALESCE(model_name, product_code) ASC")
             ->get();
@@ -69,22 +72,24 @@ class DeliveryScheduleController extends Controller
     public function store(StoreDeliveryScheduleRequest $request)
     {
         $this->authorize('create', DeliverySchedule::class);
-        $validated = $request->validated();
 
         try {
             DB::beginTransaction();
 
-            $validated['ds_delivery_code'] = $this->generateDeliveryCode();
-            $jobOrder = JobOrder::findOrFail($validated['jo_id']);
+            $validated = $request->validated();
+            $jobOrder = JobOrder::findOrFail($validated['job_order_id']);
 
+            // Auto-fill related data
             $validated['product_id'] = $jobOrder->product_id;
-            $validated['po_number'] = $jobOrder->po_number;
-            $validated['ds_qty'] = $validated['qty'];
-            $validated['week_num'] = (int) date('W', strtotime($validated['date']));
-            $validated['date_encoded'] = now();
+            $validated['week_number'] = (int) date('W', strtotime($validated['delivery_date']));
+            
+            if (empty($validated['date_encoded'])) {
+                $validated['date_encoded'] = now()->toDateString();
+            }
 
             $deliverySchedule = DeliverySchedule::create($validated);
 
+            // Log activity
             activity()
                 ->performedOn($deliverySchedule)
                 ->causedBy(auth()->user())
@@ -95,38 +100,25 @@ class DeliveryScheduleController extends Controller
 
             return redirect()
                 ->route('delivery-schedules.show', $deliverySchedule)
-                ->with('success', 'Delivery Schedule created successfully. Please review the details below and click Continue.');
+                ->with('success', 'Delivery Schedule created successfully.');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Delivery Schedule creation: ' . $e->getMessage());
-            
+            Log::error('Delivery Schedule creation failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'data' => $request->validated()
+            ]);
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to create delivery schedule.');
         }
     }
 
-    private function generateDeliveryCode(): string
-    {
-        $year = date('Y');
-        $codes = DB::table('delivery_schedules')
-            ->where('ds_delivery_code', 'like', "DS-{$year}-%")
-            ->pluck('ds_delivery_code');
-
-        $maxSeq = 0;
-        foreach ($codes as $code) {
-            if (preg_match('/DS-\d{4}-(\d+)/', $code, $matches)) {
-                $maxSeq = max($maxSeq, intval($matches[1]));
-            }
-        }
-
-        return 'DS-' . $year . '-' . str_pad($maxSeq + 1, 4, '0', STR_PAD_LEFT);
-    }
-
     public function show(DeliverySchedule $deliverySchedule)
     {
         $this->authorize('view', $deliverySchedule);
-        
+
         $deliverySchedule->load(['jobOrder.product', 'product']);
 
         return view('delivery-schedules.show', compact('deliverySchedule'));
@@ -135,35 +127,52 @@ class DeliveryScheduleController extends Controller
     public function edit(DeliverySchedule $deliverySchedule)
     {
         $this->authorize('update', $deliverySchedule);
-        
+
         $jobOrders = JobOrder::with('product')
-            ->whereIn('status', ['approved', 'in_progress'])
+            ->whereIn('status', ['approved', 'in_progress', 'completed'])
             ->orderBy('jo_number')
             ->get();
-        
+
         return view('delivery-schedules.edit', compact('deliverySchedule', 'jobOrders'));
     }
 
     public function update(UpdateDeliveryScheduleRequest $request, DeliverySchedule $deliverySchedule)
     {
         $this->authorize('update', $deliverySchedule);
-        $oldData = $deliverySchedule->toArray();
 
         try {
-            $deliverySchedule->update($request->validated());
+            DB::beginTransaction();
 
+            $oldData = $deliverySchedule->toArray();
+            $validated = $request->validated();
+
+            // Update week number if delivery date changed
+            if (isset($validated['delivery_date'])) {
+                $validated['week_number'] = (int) date('W', strtotime($validated['delivery_date']));
+            }
+
+            $deliverySchedule->update($validated);
+
+            // Log activity
             activity()
                 ->performedOn($deliverySchedule)
                 ->causedBy(auth()->user())
                 ->withProperties(['old' => $oldData, 'new' => $deliverySchedule->toArray()])
                 ->log('Delivery Schedule updated');
 
+            DB::commit();
+
             return redirect()
                 ->route('delivery-schedules.index')
                 ->with('success', 'Delivery Schedule updated successfully.');
+
         } catch (\Exception $e) {
-            Log::error('Delivery Schedule update: ' . $e->getMessage());
-            
+            DB::rollBack();
+            Log::error('Delivery Schedule update failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'delivery_schedule_id' => $deliverySchedule->id
+            ]);
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to update delivery schedule.');
@@ -175,51 +184,112 @@ class DeliveryScheduleController extends Controller
         $this->authorize('delete', $deliverySchedule);
 
         try {
+            DB::beginTransaction();
+
+            $oldData = $deliverySchedule->toArray();
             $deliverySchedule->delete();
 
             // Log activity
             activity()
-                ->performedOn($deliverySchedule)
                 ->causedBy(auth()->user())
-                ->withProperties(['old' => $deliverySchedule->toArray()])
+                ->withProperties(['old' => $oldData])
                 ->log('Delivery Schedule deleted');
+
+            DB::commit();
 
             return redirect()
                 ->route('delivery-schedules.index')
                 ->with('success', 'Delivery Schedule deleted successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Delivery Schedule deletion failed: ' . $e->getMessage());
-            
+            DB::rollBack();
+            Log::error('Delivery Schedule deletion failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'delivery_schedule_id' => $deliverySchedule->id
+            ]);
+
             return back()->with('error', 'Failed to delete delivery schedule. Please try again.');
         }
     }
 
     /**
-     * Mark delivery schedule as delivered
+     * Mark delivery schedule as complete
      */
-    public function markDelivered(DeliverySchedule $deliverySchedule)
+    public function markComplete(DeliverySchedule $deliverySchedule)
     {
-        $this->authorize('markDelivered', $deliverySchedule);
+        $this->authorize('update', $deliverySchedule);
 
         try {
             DB::beginTransaction();
 
-            $deliverySchedule->markDelivered();
+            $deliverySchedule->markComplete();
 
-            // Update finished goods out_qty
+            // Update finished goods out quantity
             $finishedGood = $deliverySchedule->product->finishedGood;
             if ($finishedGood) {
-                $finishedGood->increment('out_qty', $deliverySchedule->qty);
-                $finishedGood->out_amt += ($deliverySchedule->qty * $finishedGood->cur_sell_price);
-                $finishedGood->save();
+                $finishedGood->increment('qty_out', $deliverySchedule->qty_scheduled);
+                
+                // Calculate amount out
+                $amountOut = $deliverySchedule->qty_scheduled * $deliverySchedule->product->selling_price;
+                $finishedGood->increment('amount_out', $amountOut);
             }
 
             // Log activity
             activity()
                 ->performedOn($deliverySchedule)
                 ->causedBy(auth()->user())
-                ->withProperties(['status' => 'delivered'])
+                ->withProperties(['status' => 'complete'])
+                ->log('Delivery Schedule marked as complete');
+
+            DB::commit();
+
+            return back()->with('success', 'Delivery marked as complete successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Mark complete failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'delivery_schedule_id' => $deliverySchedule->id
+            ]);
+
+            return back()->with('error', 'Failed to mark as complete. Please try again.');
+        }
+    }
+
+    /**
+     * Mark delivery schedule as delivered (sets qty_delivered and marks complete)
+     */
+    public function markDelivered(DeliverySchedule $deliverySchedule)
+    {
+        $this->authorize('update', $deliverySchedule);
+
+        try {
+            DB::beginTransaction();
+
+            // Ensure qty_delivered is set (default to scheduled qty)
+            if (empty($deliverySchedule->qty_delivered)) {
+                $deliverySchedule->update(['qty_delivered' => $deliverySchedule->qty_scheduled]);
+            }
+
+            // Mark as complete (status => 'complete')
+            $deliverySchedule->markComplete();
+
+            // Update finished goods out quantity (defensive lookup)
+            $product = Product::find($deliverySchedule->product_id);
+            if ($product && $product->finishedGood) {
+                $finishedGood = $product->finishedGood;
+                $finishedGood->increment('qty_out', $deliverySchedule->qty_delivered);
+
+                // Calculate amount out
+                $amountOut = $deliverySchedule->qty_delivered * $product->selling_price;
+                $finishedGood->increment('amount_out', $amountOut);
+            }
+
+            // Log activity
+            activity()
+                ->performedOn($deliverySchedule)
+                ->causedBy(auth()->user())
+                ->withProperties(['status' => 'delivered', 'qty_delivered' => $deliverySchedule->qty_delivered])
                 ->log('Delivery Schedule marked as delivered');
 
             DB::commit();
@@ -228,8 +298,11 @@ class DeliveryScheduleController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Mark delivered failed: ' . $e->getMessage());
-            
+            Log::error('Mark delivered failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'delivery_schedule_id' => $deliverySchedule->id
+            ]);
+
             return back()->with('error', 'Failed to mark as delivered. Please try again.');
         }
     }

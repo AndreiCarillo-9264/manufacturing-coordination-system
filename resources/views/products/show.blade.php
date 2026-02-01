@@ -61,7 +61,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Model Name</label>
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Model</label>
                     <p class="mt-1.5 text-gray-900">{{ $product->model_name ?? '—' }}</p>
                 </div>
 
@@ -162,7 +162,7 @@
 
                 <div class="md:col-span-2 lg:col-span-3">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Remarks / PO Notes</label>
-                    <p class="mt-1.5 text-gray-800 whitespace-pre-line">{{ $product->remarks_po ?: 'No special remarks.' }}</p>
+                    <p class="mt-1.5 text-gray-800 whitespace-pre-line">{{ $product->remarks ?: 'No special remarks.' }}</p>
                 </div>
 
             </div>

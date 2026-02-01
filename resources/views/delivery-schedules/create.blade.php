@@ -21,12 +21,21 @@
             <p><strong>Job Order:</strong> Must be in "approved", "in_progress", or "completed" status</p>
         </div>
 
+        <!-- Suggested Delivery Code (editable) -->
+        <div>
+            <label for="delivery_code" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Code</label>
+            <input type="text" id="delivery_code" name="delivery_code" value="{{ old('delivery_code') }}" placeholder="Auto-suggested delivery code, editable"
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_code') border-red-500 @enderror">
+            <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
+            @error('delivery_code') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Job Order -->
             <div class="md:col-span-2">
-                <label for="jo_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
-                <select id="jo_id" name="jo_id" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('jo_id') border-red-500 @enderror">
+                <label for="job_order_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
+                <select id="job_order_id" name="job_order_id" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('job_order_id') border-red-500 @enderror">
                     <option value="">— Select Job Order —</option>
                     @foreach($jobOrders as $jo)
                     <option value="{{ $jo->id }}" 
@@ -34,13 +43,13 @@
                             data-product-code="{{ $jo->product->product_code }}"
                             data-product-name="{{ $jo->product->model_name ?? $jo->product->product_code }}"
                             data-uom="{{ $jo->product->uom }}"
-                            data-qty="{{ $jo->qty }}"
-                            {{ old('jo_id') == $jo->id ? 'selected' : '' }}>
-                        {{ $jo->jo_number }} — {{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }} (Customer: {{ $jo->product->customer_name ?? 'N/A' }} | PO: {{ $jo->po_number ?? 'N/A' }})
+                            data-qty="{{ $jo->qty_ordered }}"
+                            {{ old('job_order_id') == $jo->id ? 'selected' : '' }}>
+                        {{ $jo->jo_number }} — {{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }} (Customer: {{ $jo->product->customer ?? 'N/A' }} | PO: {{ $jo->po_number ?? 'N/A' }})
                     </option>
                     @endforeach
                 </select>
-                @error('jo_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('job_order_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Product Code (Auto-populated) -->
@@ -53,19 +62,19 @@
 
             <!-- Delivery Date -->
             <div>
-                <label for="date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
-                <input type="date" id="date" name="date" value="{{ old('date', now()->format('Y-m-d')) }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('date') border-red-500 @enderror">
-                @error('date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
+                <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', now()->format('Y-m-d')) }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_date') border-red-500 @enderror">
+                @error('delivery_date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Quantity -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" id="qty" name="qty" value="{{ old('qty', 0) }}" min="0" step="1" required
+                <label for="qty_scheduled" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
+                <input type="number" id="qty_scheduled" name="qty_scheduled" value="{{ old('qty_scheduled', 1) }}" min="1" step="1" required
                        placeholder="Number of units"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_scheduled') border-red-500 @enderror">
+                @error('qty_scheduled') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM -->
@@ -101,11 +110,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const joSelect = document.getElementById('jo_id');
+    const joSelect = document.getElementById('job_order_id');
     const productInfo = document.getElementById('product_info');
     const poNumberInput = document.querySelector('input[name="po_number"]') || createHiddenInput('po_number');
     const uomInput = document.getElementById('uom');
-    const qtyInput = document.getElementById('qty');
+    const qtyInput = document.getElementById('qty_scheduled');
     
     function autoPopulateFields() {
         const selectedOption = joSelect.options[joSelect.selectedIndex];
@@ -138,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             productInfo.value = '';
             uomInput.value = '';
-            qtyInput.value = 0;
+            qtyInput.value = 1;
             if (poNumberInput) poNumberInput.value = '';
         }
     }
@@ -168,6 +177,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (joSelect.value) {
         autoPopulateFields();
     }
+
+    // Fetch suggested delivery code if not provided
+    (async function() {
+        const input = document.getElementById('delivery_code');
+        if (!input || input.value) return;
+        try {
+            const resp = await fetch('/api/sequences/next?type=ds');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.delivery_code) input.value = data.delivery_code;
+        } catch (e) {
+            console.error('Sequence fetch failed', e);
+        }
+    })();
 });
 </script>
 @endsection

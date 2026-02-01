@@ -25,8 +25,16 @@
         <!-- Read-only system fields -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-blue-50/40 p-5 rounded-lg border border-blue-100">
             <div>
-                <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">Product Code</label>
-                <div class="mt-1.5 text-base font-mono font-medium text-gray-900">{{ $product->product_code }}</div>
+                <label for="product_code" class="block text-sm font-medium text-gray-700 mb-1.5">Product Code</label>
+                <input type="text" id="product_code" name="product_code" value="{{ old('product_code', $product->product_code) }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('product_code') border-red-500 @enderror">
+                @error('product_code') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <!-- Suggestion UI (non-destructive) -->
+                <div id="product_code_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="product_code_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="product_code_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="product_code_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">Date Encoded</label>
@@ -50,9 +58,9 @@
                 @enderror
             </div>
 
-            <!-- Model Name -->
+            <!-- Model -->
             <div>
-                <label for="model_name" class="block text-sm font-medium text-gray-700 mb-1.5">Model Name</label>
+                <label for="model_name" class="block text-sm font-medium text-gray-700 mb-1.5">Model</label>
                 <input type="text" id="model_name" name="model_name" value="{{ old('model_name', $product->model_name) }}"
                        placeholder="e.g. Widget-X 3000" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('model_name') border-red-500 @enderror">
                 @error('model_name')
@@ -190,10 +198,10 @@
 
             <!-- Remarks PO -->
             <div class="md:col-span-2">
-                <label for="remarks_po" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks / Special Instructions (PO)</label>
-                <textarea id="remarks_po" name="remarks_po" rows="3"
-                          placeholder="Notes for production / purchasing / packaging..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('remarks_po') border-red-500 @enderror">{{ old('remarks_po', $product->remarks_po) }}</textarea>
-                @error('remarks_po')
+                <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks / Special Instructions (PO)</label>
+                <textarea id="remarks" name="remarks" rows="3"
+                          placeholder="Notes for production / purchasing / packaging..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm @error('remarks') border-red-500 @enderror">{{ old('remarks', $product->remarks) }}</textarea>
+                @error('remarks')
                     <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
@@ -277,5 +285,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Suggest product code (show suggestion, do not overwrite)
+(async function() {
+    const input = document.getElementById('product_code');
+    const suggestionContainer = document.getElementById('product_code_suggestion');
+    const suggestionText = document.getElementById('product_code_suggestion_text');
+    const useBtn = document.getElementById('product_code_use_suggestion');
+    const regenBtn = document.getElementById('product_code_regenerate');
+
+    async function fetchSuggestion() {
+        try {
+            const resp = await fetch('/api/sequences/next?type=product');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.product_code) {
+                suggestionText.textContent = data.product_code;
+                suggestionContainer.classList.remove('hidden');
+                useBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    useBtn.addEventListener('click', function() {
+        if (suggestionText.textContent) {
+            input.value = suggestionText.textContent;
+            suggestionContainer.classList.add('hidden');
+        }
+    });
+
+    regenBtn.addEventListener('click', function() { fetchSuggestion(); });
+
+    fetchSuggestion();
+})();
+
 </script>
 @endsection

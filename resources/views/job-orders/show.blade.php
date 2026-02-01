@@ -64,12 +64,12 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Quantity</label>
-                    <p class="mt-1.5 text-gray-900">{{ $jobOrder->qty ?? '—' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $jobOrder->qty_ordered ?? '—' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">UOM</label>
-                    <p class="mt-1.5 text-gray-900">{{ $jobOrder->uom ?? '—' }}</p>
-                </div>
+                    <p class="mt-1.5 text-gray-900">{{ $jobOrder->product->uom ?? $jobOrder->uom ?? '—' }}</p>
+                </div> 
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Week Number</label>
                     <p class="mt-1.5 text-gray-900">{{ $jobOrder->week_number ?? '—' }}</p>
@@ -91,7 +91,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 uppercase tracking-wide">JO Balance</label>
-                    <p class="mt-2 text-xl font-semibold text-gray-900">{{ $jobOrder->jo_balance }}</p>
+                    <p class="mt-2 text-xl font-semibold text-gray-900">{{ $jobOrder->qty_balance }}</p>
                 </div>
                 <!-- Add more if needed -->
             </div>
@@ -115,7 +115,7 @@
                         @foreach($jobOrder->transfers as $transfer)
                         <tr>
                             <td>{{ $transfer->id }}</td>
-                            <td>{{ $transfer->quantity ?? 'N/A' }}</td>
+                            <td>{{ $transfer->qty_transferred ?? 'N/A' }}</td>
                             <td>{{ $transfer->created_at->format('M d, Y') }}</td>
                         </tr>
                         @endforeach
@@ -143,7 +143,7 @@
                         @foreach($jobOrder->deliverySchedules as $schedule)
                         <tr>
                             <td>{{ $schedule->id }}</td>
-                            <td>{{ $schedule->date ?? 'N/A' }}</td>
+                            <td>{{ $schedule->delivery_date?->format('M d, Y') ?? 'N/A' }}</td>
                             <td>{{ ucfirst($schedule->status) }}</td>
                         </tr>
                         @endforeach

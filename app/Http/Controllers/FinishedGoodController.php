@@ -19,13 +19,13 @@ class FinishedGoodController extends Controller
         // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('product', function($q) use ($search) {
+            $query->whereHas('product', function ($q) use ($search) {
                 $q->where('product_code', 'like', "%{$search}%")
-                  ->orWhere('model_name', 'like', "%{$search}%");
+                    ->orWhere('model_name', 'like', "%{$search}%");
             });
         }
 
-        // NEW: Filter by product
+        // Filter by product
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
         }
@@ -35,16 +35,21 @@ class FinishedGoodController extends Controller
             $query->lowStock();
         }
 
+        // Filter items with variance
+        if ($request->has('with_variance')) {
+            $query->withVariance();
+        }
+
         $finishedGoods = $query->latest()->paginate(15);
 
         // Calculate totals
-        $totalStock    = FinishedGood::sum('ending_count');
-        $totalValue    = FinishedGood::sum('end_amt');
+        $totalStock = FinishedGood::sum('qty_actual_ending');
+        $totalValue = FinishedGood::sum('amount_ending');
         $lowStockCount = FinishedGood::lowStock()->count();
+        $totalVariance = FinishedGood::sum('qty_variance');
 
         // Products for filter dropdown
-        $products = Product::query()
-            ->select('id', 'product_code', 'model_name')
+        $products = Product::select('id', 'product_code', 'model_name')
             ->orderByRaw("COALESCE(model_name, product_code) ASC")
             ->get();
 
@@ -53,6 +58,7 @@ class FinishedGoodController extends Controller
             'totalStock',
             'totalValue',
             'lowStockCount',
+            'totalVariance',
             'products'
         ));
     }
@@ -60,7 +66,7 @@ class FinishedGoodController extends Controller
     public function show(FinishedGood $finishedGood)
     {
         $this->authorize('view', $finishedGood);
-        
+
         $finishedGood->load('product');
 
         return view('finished-goods.show', compact('finishedGood'));
@@ -78,14 +84,21 @@ class FinishedGoodController extends Controller
         $this->authorize('update', $finishedGood);
 
         $validated = $request->validate([
-            'ending_count' => 'required|integer|min:0',
-            'buffer_stocks' => 'required|integer|min:0',
-            'remarks'      => 'nullable|string',
+            'qty_actual_ending' => 'required|integer|min:0',
+            'qty_buffer_stock' => 'required|integer|min:0',
+            'qty_pc_area' => 'nullable|integer|min:0',
+            'remarks' => 'nullable|string',
         ]);
 
         try {
+            DB::beginTransaction();
+
             $oldData = $finishedGood->toArray();
             $finishedGood->update($validated);
+
+            // Recalculate variance
+            $finishedGood->calculateVariance();
+            $finishedGood->calculateAmountVariance();
 
             // Log activity
             activity()
@@ -94,16 +107,67 @@ class FinishedGoodController extends Controller
                 ->withProperties(['old' => $oldData, 'new' => $finishedGood->toArray()])
                 ->log('Finished Good updated');
 
+            DB::commit();
+
             return redirect()
                 ->route('finished-goods.index')
                 ->with('success', 'Finished Good updated successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Finished Good update failed: ' . $e->getMessage());
-            
+            DB::rollBack();
+            Log::error('Finished Good update failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'finished_good_id' => $finishedGood->id
+            ]);
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to update finished good. Please try again.');
+        }
+    }
+
+    public function updateAging(FinishedGood $finishedGood)
+    {
+        $this->authorize('update', $finishedGood);
+
+        try {
+            $finishedGood->updateAgingRanges();
+
+            return back()->with('success', 'Aging ranges updated successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Aging update failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'finished_good_id' => $finishedGood->id
+            ]);
+
+            return back()->with('error', 'Failed to update aging ranges.');
+        }
+    }
+
+    public function bulkUpdateAging()
+    {
+        $this->authorize('update', FinishedGood::class);
+
+        try {
+            $finishedGoods = FinishedGood::all();
+            
+            foreach ($finishedGoods as $finishedGood) {
+                $finishedGood->updateAgingRanges();
+            }
+
+            activity()
+                ->causedBy(auth()->user())
+                ->log('Bulk aging update performed');
+
+            return back()->with('success', 'All aging ranges updated successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Bulk aging update failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id()
+            ]);
+
+            return back()->with('error', 'Failed to update aging ranges.');
         }
     }
 }

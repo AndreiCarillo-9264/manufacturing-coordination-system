@@ -22,6 +22,15 @@
             <p><strong>Encoded By</strong> will be set to current user</p>
         </div>
 
+        <!-- Suggested Product Code (editable) -->
+        <div>
+            <label for="product_code" class="block text-sm font-medium text-gray-700 mb-1.5">Product Code</label>
+            <input type="text" id="product_code" name="product_code" value="{{ old('product_code') }}" 
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('product_code') border-red-500 @enderror" placeholder="Auto-suggested code, editable">
+            <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
+            @error('product_code') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <!-- Customer -->
@@ -32,9 +41,9 @@
                 @error('customer') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            <!-- Model Name -->
+            <!-- Model -->
             <div>
-                <label for="model_name" class="block text-sm font-medium text-gray-700 mb-1.5">Model Name</label>
+                <label for="model_name" class="block text-sm font-medium text-gray-700 mb-1.5">Model</label>
                 <input type="text" name="model_name" value="{{ old('model_name') }}"
                        placeholder="e.g. Widget-X 3000" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('model_name') border-red-500 @enderror">
                 @error('model_name') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -148,10 +157,10 @@
 
             <!-- Remarks PO -->
             <div class="md:col-span-2">
-                <label for="remarks_po" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks for PO</label>
-                <textarea name="remarks_po" rows="3" placeholder="Special instructions or notes for purchase orders..."
-                          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('remarks_po') border-red-500 @enderror">{{ old('remarks_po') }}</textarea>
-                @error('remarks_po') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks for PO</label>
+                <textarea id="remarks" name="remarks" rows="3" placeholder="Special instructions or notes for purchase orders..."
+                          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('remarks') border-red-500 @enderror">{{ old('remarks') }}</textarea>
+                @error('remarks') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Location -->
@@ -208,6 +217,20 @@ document.addEventListener('DOMContentLoaded', () => {
     mcInput?.addEventListener('input', updateCalculations);
     priceInput?.addEventListener('input', updateCalculations);
     updateCalculations();
+
+    // Fetch suggested product code if none provided
+    (async function() {
+        const input = document.getElementById('product_code');
+        if (!input || input.value) return;
+        try {
+            const resp = await fetch('/api/sequences/next?type=product');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.product_code) input.value = data.product_code;
+        } catch (e) {
+            console.error('Sequence fetch failed', e);
+        }
+    })();
 
     // Auto-format dimension on blur
     const dimensionInput = document.querySelector('input[name="dimension"]');

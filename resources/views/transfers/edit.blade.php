@@ -18,11 +18,25 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            <!-- PTT Number (Read-only) -->
+            <!-- PTT Number -->
             <div>
                 <label for="ptt_number" class="block text-sm font-medium text-gray-700 mb-1.5">PTT Number</label>
-                <input type="text" value="{{ $transfer->ptt_number }}" readonly
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                <input type="text" id="ptt_number" name="ptt_number" value="{{ old('ptt_number', $transfer->ptt_number) }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('ptt_number') border-red-500 @enderror">
+                @error('ptt_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <!-- Suggestion UI (non-destructive) -->
+                <div id="ptt_number_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="ptt_number_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="ptt_number_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="ptt_number_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
+                <input type="hidden" name="job_order_id" value="{{ old('job_order_id', $transfer->job_order_id) }}">
+            </div>
+
+            <!-- Product Info -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
+                <input type="text" readonly value="{{ $transfer->product->product_code }} — {{ $transfer->product->model_name }}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
             </div>
 
             <!-- Section -->
@@ -47,18 +61,18 @@
 
             <!-- Transfer Time -->
             <div>
-                <label for="transfer_time" class="block text-sm font-medium text-gray-700 mb-1.5">Transfer Time *</label>
-                <input type="time" name="transfer_time" value="{{ old('transfer_time', $transfer->transfer_time) }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('transfer_time') border-red-500 @enderror">
-                @error('transfer_time') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="time_transferred" class="block text-sm font-medium text-gray-700 mb-1.5">Transfer Time *</label>
+                <input type="time" name="time_transferred" value="{{ old('time_transferred', $transfer->time_transferred) }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('time_transferred') border-red-500 @enderror">
+                @error('time_transferred') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Quantity -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Produced *</label>
-                <input type="number" name="qty" value="{{ old('qty', $transfer->qty) }}" min="0" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="qty_transferred" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Produced *</label>
+                <input type="number" name="qty_transferred" value="{{ old('qty_transferred', $transfer->qty_transferred) }}" min="1" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_transferred') border-red-500 @enderror">
+                @error('qty_transferred') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Grade (Optional) -->
@@ -92,10 +106,24 @@
 
             <!-- Delivery Date -->
             <div>
-                <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
-                <input type="date" name="delivery_date" value="{{ old('delivery_date', $transfer->delivery_date->format('Y-m-d')) }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_date') border-red-500 @enderror">
-                @error('delivery_date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="date_delivery_scheduled" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
+                <input type="date" name="date_delivery_scheduled" value="{{ old('date_delivery_scheduled', $transfer->date_delivery_scheduled->format('Y-m-d')) }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('date_delivery_scheduled') border-red-500 @enderror">
+                @error('date_delivery_scheduled') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <!-- Received By -->
+            <div>
+                <label for="received_by_user_id" class="block text-sm font-medium text-gray-700 mb-1.5">Received By *</label>
+                <select name="received_by_user_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('received_by_user_id') border-red-500 @enderror">
+                    <option value="">— Select Staff —</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}" {{ old('received_by_user_id', $transfer->received_by_user_id ?? ($transfer->receivedBy->id ?? '')) == $user->id ? 'selected' : '' }}>
+                            {{ $user->name }} ({{ $user->department ?? '—' }})
+                        </option>
+                    @endforeach
+                </select>
+                @error('received_by_user_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Date Received -->
@@ -117,7 +145,7 @@
             <!-- Quantity Received -->
             <div>
                 <label for="qty_received" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Received *</label>
-                <input type="number" name="qty_received" value="{{ old('qty_received', $transfer->qty_received) }}" min="0" required
+                <input type="number" name="qty_received" value="{{ old('qty_received', $transfer->qty_received) }}" min="1" required
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_received') border-red-500 @enderror">
                 @error('qty_received') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -138,4 +166,40 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('ptt_number');
+    const suggestionContainer = document.getElementById('ptt_number_suggestion');
+    const suggestionText = document.getElementById('ptt_number_suggestion_text');
+    const useBtn = document.getElementById('ptt_number_use_suggestion');
+    const regenBtn = document.getElementById('ptt_number_regenerate');
+
+    async function fetchSuggestion() {
+        try {
+            const resp = await fetch('/api/sequences/next?type=ptt');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.ptt_number) {
+                suggestionText.textContent = data.ptt_number;
+                suggestionContainer.classList.remove('hidden');
+                useBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    useBtn.addEventListener('click', function() {
+        if (suggestionText.textContent) {
+            input.value = suggestionText.textContent;
+            suggestionContainer.classList.add('hidden');
+        }
+    });
+
+    regenBtn.addEventListener('click', function() { fetchSuggestion(); });
+
+    // Fetch a suggestion on load (do not auto-overwrite existing value)
+    fetchSuggestion();
+});
+</script>
+
 @endsection

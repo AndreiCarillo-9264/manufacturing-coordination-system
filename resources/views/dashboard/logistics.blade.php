@@ -44,27 +44,27 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($recentDeliveries as $delivery)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $delivery->date->format('M d, Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $delivery->delivery_date->format('M d, Y') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {{ $delivery->product->model_name ?? $delivery->product->product_code ?? '—' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($delivery->qty) }} {{ $delivery->uom }}
+                            {{ number_format($delivery->qty_scheduled) }} {{ $delivery->product->uom }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $delivery->jobOrder?->encodedBy->name ?? '—' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                {{ $delivery->ds_status === 'delivered' ? 'bg-green-100 text-green-800' : '' }}
-                                {{ $delivery->ds_status === 'pending'   ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                {{ $delivery->ds_status === 'urgent'    ? 'bg-orange-100 text-orange-800' : '' }}">
-                                {{ ucfirst($delivery->ds_status) }}
-                                @if($delivery->isDelayed() && $delivery->ds_status !== 'delivered')
+                                {{ $delivery->status === 'delivered' ? 'bg-green-100 text-green-800' : '' }}
+                                {{ $delivery->status === 'pending'   ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                {{ $delivery->status === 'urgent'    ? 'bg-orange-100 text-orange-800' : '' }}"> 
+                                {{ ucfirst($delivery->status) }}
+                            @if($delivery->isDelayed() && $delivery->status !== 'delivered')
                                     <span class="ml-1 text-red-600 font-bold">(Delayed)</span>
                                 @endif
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            @if($delivery->ds_status !== 'delivered')
+                            @if($delivery->status !== 'delivered')
                             <form action="{{ route('delivery-schedules.mark-delivered', $delivery) }}" method="POST" style="display:inline;">
                                 @csrf
                                 <button type="submit" class="text-green-600 hover:text-green-800 font-semibold transition">
@@ -123,17 +123,17 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $delivery->jobOrder?->encodedBy->name ?? '—' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                {{ $delivery->ds_status === 'delivered' ? 'bg-green-100 text-green-800' : '' }}
-                                {{ $delivery->ds_status === 'pending'   ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                {{ $delivery->ds_status === 'urgent'    ? 'bg-orange-100 text-orange-800' : '' }}">
-                                {{ ucfirst($delivery->ds_status) }}
-                                @if($delivery->isDelayed() && $delivery->ds_status !== 'delivered')
+                                {{ $delivery->status === 'delivered' ? 'bg-green-100 text-green-800' : '' }}
+                                {{ $delivery->status === 'pending'   ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                {{ $delivery->status === 'urgent'    ? 'bg-orange-100 text-orange-800' : '' }}">
+                                {{ ucfirst($delivery->status) }}
+                                @if($delivery->isDelayed() && $delivery->status !== 'delivered')
                                     <span class="ml-1 text-red-600 font-bold">(Delayed)</span>
                                 @endif
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            @if($delivery->ds_status !== 'delivered')
+                            @if($delivery->status !== 'delivered')
                             <form action="{{ route('delivery-schedules.mark-delivered', $delivery) }}" method="POST" style="display:inline;">
                                 @csrf
                                 <button type="submit" class="text-green-600 hover:text-green-800 font-semibold transition">

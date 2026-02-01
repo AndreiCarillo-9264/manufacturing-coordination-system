@@ -22,8 +22,14 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Tag Number (Hidden, auto-generated) -->
-            <input type="hidden" id="tag_number" name="tag_number" value="">
+            <!-- Tag Number (Suggested, editable) -->
+            <div>
+                <label for="tag_number" class="block text-sm font-medium text-gray-700 mb-1.5">Tag Number</label>
+                <input type="text" id="tag_number" name="tag_number" value="{{ old('tag_number') }}" placeholder="Auto-suggested tag number, editable"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('tag_number') border-red-500 @enderror">
+                <p class="mt-1.5 text-xs text-gray-500">Tag will be suggested (TAG-YYYY-NNNN) but you may change it.</p>
+                @error('tag_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
 
             <!-- Product -->
             <div class="md:col-span-2">
@@ -34,21 +40,21 @@
                     @foreach($products as $product)
                     <option value="{{ $product->id }}" data-uom="{{ $product->uom }}" 
                            {{ old('product_id') == $product->id ? 'selected' : '' }}>
-                        {{ $product->product_code }} — {{ $product->model_name }} ({{ $product->customer_name ?? 'N/A' }})
+                        {{ $product->product_code }} — {{ $product->model_name }} ({{ $product->customer ?? 'N/A' }})
                     </option>
                     @endforeach
                 </select>
                 @error('product_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            <!-- Finished Goods Quantity -->
+            <!-- Counted Quantity -->
             <div>
-                <label for="fg_qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" id="fg_qty" name="fg_qty" value="{{ old('fg_qty', 0) }}" 
+                <label for="qty_counted" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
+                <input type="number" id="qty_counted" name="qty_counted" value="{{ old('qty_counted', 0) }}" 
                        min="0" step="1" required
                        placeholder="Physical count"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('fg_qty') border-red-500 @enderror">
-                @error('fg_qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_counted') border-red-500 @enderror">
+                @error('qty_counted') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM (Auto-populated) -->
@@ -149,6 +155,20 @@ document.addEventListener('DOMContentLoaded', function() {
             uomField.value = uom;
         }
     }
+
+    // Fetch suggested Tag Number
+    (async function() {
+        const input = document.getElementById('tag_number');
+        if (!input || input.value) return;
+        try {
+            const resp = await fetch('/api/sequences/next?type=tag');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.tag_number) input.value = data.tag_number;
+        } catch (e) {
+            console.error('Sequence fetch failed', e);
+        }
+    })();
 });
 </script>
 @endsection

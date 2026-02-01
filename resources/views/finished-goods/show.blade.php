@@ -36,12 +36,12 @@
                     <p class="mt-1.5 text-gray-900 font-mono">{{ $finishedGood->product->product_code }}</p>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Model Name</label>
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Model</label>
                     <p class="mt-1.5 text-gray-900">{{ $finishedGood->product->model_name ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Customer</label>
-                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->product->customer_name ?? 'N/A' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->product->customer ?? 'N/A' }}</p>
                 </div>
             </div>
         </div>
@@ -52,22 +52,22 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-blue-700 uppercase tracking-wide">In Quantity</label>
-                    <p class="mt-2 text-2xl font-bold text-blue-900">{{ $finishedGood->in_qty ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-blue-900">{{ $finishedGood->qty_in ?? 0 }}</p>
                     <p class="text-xs text-blue-600 mt-1">From transfers</p>
                 </div>
                 <div class="bg-purple-50 border border-purple-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-purple-700 uppercase tracking-wide">Out Quantity</label>
-                    <p class="mt-2 text-2xl font-bold text-purple-900">{{ $finishedGood->out_qty ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-purple-900">{{ $finishedGood->qty_out ?? 0 }}</p>
                     <p class="text-xs text-purple-600 mt-1">Delivered out</p>
                 </div>
                 <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-green-700 uppercase tracking-wide">Theoretical End</label>
-                    <p class="mt-2 text-2xl font-bold text-green-900">{{ $finishedGood->theo_end ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-green-900">{{ $finishedGood->qty_theoretical_ending ?? 0 }}</p>
                     <p class="text-xs text-green-600 mt-1">Calculated count</p>
                 </div>
                 <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-yellow-700 uppercase tracking-wide">Actual End</label>
-                    <p class="mt-2 text-2xl font-bold text-yellow-900">{{ $finishedGood->ending_count ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-yellow-900">{{ $finishedGood->qty_actual_ending ?? 0 }}</p>
                     <p class="text-xs text-yellow-600 mt-1">Physical count</p>
                 </div>
             </div>
@@ -79,14 +79,14 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Variance</label>
-                    <p class="mt-2 text-2xl font-bold {{ ($finishedGood->variance ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ ($finishedGood->variance ?? 0) >= 0 ? '+' : '' }}{{ $finishedGood->variance ?? 0 }}
+                    <p class="mt-2 text-2xl font-bold {{ ($finishedGood->qty_variance ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                        {{ ($finishedGood->qty_variance ?? 0) >= 0 ? '+' : '' }}{{ $finishedGood->qty_variance ?? 0 }}
                     </p>
                     <p class="text-xs text-gray-600 mt-1">Difference between theoretical and actual</p>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Buffer Stocks</label>
-                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $finishedGood->buffer_stocks ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $finishedGood->qty_buffer_stock ?? 0 }}</p>
                     <p class="text-xs text-gray-600 mt-1">Safety stock level</p>
                 </div>
             </div>
@@ -98,15 +98,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">In Amount</label>
-                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->in_amt ?? 0, 2) }}</p>
+                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->amount_in ?? 0, 2) }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Out Amount</label>
-                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->out_amt ?? 0, 2) }}</p>
+                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->amount_out ?? 0, 2) }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">End Amount</label>
-                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->end_amt ?? 0, 2) }}</p>
+                    <p class="mt-1.5 text-gray-900 text-lg font-semibold">₱{{ number_format($finishedGood->amount_ending ?? 0, 2) }}</p>
                 </div>
             </div>
         </div>
@@ -117,11 +117,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Last In Date</label>
-                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->last_in_date?->format('M d, Y') ?? 'Never' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->date_last_in?->format('M d, Y') ?? 'Never' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Last Out Date</label>
-                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->last_out_date?->format('M d, Y') ?? 'Never' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $finishedGood->date_oldest?->format('M d, Y') ?? 'Never' }}</p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Remarks</label>

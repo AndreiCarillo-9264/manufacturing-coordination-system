@@ -23,20 +23,40 @@
             <p><strong>Total Amount</strong> will be calculated automatically</p>
         </div>
 
+        <!-- Suggested PTT Number (editable) -->
+        <div>
+            <label for="ptt_number" class="block text-sm font-medium text-gray-700 mb-1.5">PTT Number</label>
+            <input type="text" id="ptt_number" name="ptt_number" value="{{ old('ptt_number') }}" placeholder="Auto-suggested PTT number, editable"
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('ptt_number') border-red-500 @enderror">
+            @error('ptt_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <!-- Job Order -->
             <div>
-                <label for="jo_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
-                <select id="jo_id" name="jo_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('jo_id') border-red-500 @enderror">
+                <label for="job_order_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
+                <select id="job_order_id" name="job_order_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('job_order_id') border-red-500 @enderror">
                     <option value="">— Select Approved Job Order —</option>
                     @foreach($jobOrders as $jo)
-                        <option value="{{ $jo->id }}" {{ old('jo_id') == $jo->id ? 'selected' : '' }}>
-                            {{ $jo->jo_number }} - {{ $jo->product->model_name }} (Customer: {{ $jo->product->customer_name ?? 'N/A' }} | Qty: {{ $jo->qty }})
+                        <option value="{{ $jo->id }}" 
+                                data-po-number="{{ $jo->po_number }}"
+                                data-product-code="{{ $jo->product->product_code }}"
+                                data-product-name="{{ $jo->product->model_name ?? $jo->product->product_code }}"
+                                data-uom="{{ $jo->product->uom }}"
+                                data-qty="{{ $jo->qty_ordered }}"
+                                {{ old('job_order_id') == $jo->id ? 'selected' : '' }}>
+                            {{ $jo->jo_number }} - {{ $jo->product->model_name ?? $jo->product->product_code }} (Customer: {{ $jo->product->customer ?? 'N/A' }} | Qty: {{ $jo->qty_ordered }})
                         </option>
                     @endforeach
                 </select>
-                @error('jo_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('job_order_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <!-- Product Info (Auto-populated) -->
+            <div class="md:col-span-2">
+                <label for="product_info" class="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
+                <input type="text" id="product_info" readonly placeholder="Auto-populated from Job Order" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
             </div>
 
             <!-- Section -->
@@ -62,18 +82,18 @@
 
             <!-- Transfer Time -->
             <div>
-                <label for="transfer_time" class="block text-sm font-medium text-gray-700 mb-1.5">Transfer Time *</label>
-                <input type="time" name="transfer_time" value="{{ old('transfer_time') }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('transfer_time') border-red-500 @enderror">
-                @error('transfer_time') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="time_transferred" class="block text-sm font-medium text-gray-700 mb-1.5">Transfer Time *</label>
+                <input type="time" name="time_transferred" value="{{ old('time_transferred') }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('time_transferred') border-red-500 @enderror">
+                @error('time_transferred') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Quantity -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Produced *</label>
-                <input type="number" name="qty" value="{{ old('qty', 0) }}" min="0" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="qty_transferred" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Produced *</label>
+                <input type="number" name="qty_transferred" value="{{ old('qty_transferred', 1) }}" min="1" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_transferred') border-red-500 @enderror">
+                @error('qty_transferred') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Grade (Optional) -->
@@ -108,10 +128,18 @@
 
             <!-- Delivery Date -->
             <div>
-                <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
-                <input type="date" name="delivery_date" value="{{ old('delivery_date') }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_date') border-red-500 @enderror">
-                @error('delivery_date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="date_delivery_scheduled" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
+                <input type="date" name="date_delivery_scheduled" value="{{ old('date_delivery_scheduled') }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('date_delivery_scheduled') border-red-500 @enderror">
+                @error('date_delivery_scheduled') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <!-- UOM (Auto-populated) -->
+            <div>
+                <label for="uom" class="block text-sm font-medium text-gray-700 mb-1.5">Unit of Measure</label>
+                <input type="text" id="uom" name="uom" value="{{ old('uom', '') }}" readonly
+                       placeholder="Auto-populated from product"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
             </div>
 
             <!-- Received By -->
@@ -119,14 +147,11 @@
                 <label for="received_by_user_id" class="block text-sm font-medium text-gray-700 mb-1.5">Received By *</label>
                 <select name="received_by_user_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('received_by_user_id') border-red-500 @enderror">
                     <option value="">— Select Staff —</option>
-                    @forelse($jobOrders as $jo)
-                        @if($jo->encodedBy)
-                            <option value="{{ $jo->encodedBy->id }}" {{ old('received_by_user_id') == $jo->encodedBy->id ? 'selected' : '' }}>
-                                {{ $jo->encodedBy->name }} ({{ $jo->encodedBy->department }})
-                            </option>
-                        @endif
-                    @empty
-                    @endforelse
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}" {{ old('received_by_user_id') == $user->id ? 'selected' : '' }}>
+                            {{ $user->name }} ({{ $user->department ?? '—' }})
+                        </option>
+                    @endforeach
                 </select>
                 @error('received_by_user_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -150,7 +175,7 @@
             <!-- Quantity Received -->
             <div>
                 <label for="qty_received" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Received *</label>
-                <input type="number" name="qty_received" value="{{ old('qty_received', 0) }}" min="0" required
+                <input type="number" name="qty_received" value="{{ old('qty_received', 1) }}" min="1" required
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_received') border-red-500 @enderror">
                 @error('qty_received') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -171,4 +196,87 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const joSelect = document.getElementById('job_order_id');
+    const productInfo = document.getElementById('product_info');
+    const uomInput = document.getElementById('uom');
+    const qtyTransInput = document.querySelector('input[name="qty_transferred"]');
+    const qtyRecInput = document.querySelector('input[name="qty_received"]');
+    const poNumberInput = document.querySelector('input[name="po_number"]') || createHiddenInput('po_number');
+
+    function autoPopulateFields() {
+        const selectedOption = joSelect.options[joSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const poNumber = selectedOption.getAttribute('data-po-number');
+            const productCode = selectedOption.getAttribute('data-product-code');
+            const productName = selectedOption.getAttribute('data-product-name');
+            const uom = selectedOption.getAttribute('data-uom');
+            const qty = selectedOption.getAttribute('data-qty');
+
+            // Auto-populate product info
+            const productDisplay = productCode ? productCode + ' — ' + productName : productName;
+            productInfo.value = productDisplay || '';
+
+            // Auto-populate UOM if user hasn't changed it
+            if (uom && !qtyTransInput.dataset.userModified) {
+                uomInput.value = uom;
+            }
+
+            // Suggest quantities based on Job Order if user hasn't modified
+            if (qty && !qtyTransInput.dataset.userModified) {
+                qtyTransInput.value = qty;
+            }
+            if (qty && !qtyRecInput.dataset.userModified) {
+                qtyRecInput.value = qty;
+            }
+
+            if (poNumberInput && poNumber) {
+                poNumberInput.value = poNumber;
+            }
+        } else {
+            productInfo.value = '';
+            uomInput.value = '';
+            qtyTransInput.value = 1;
+            qtyRecInput.value = 1;
+            if (poNumberInput) poNumberInput.value = '';
+        }
+    }
+
+    // Helper to create hidden input
+    function createHiddenInput(name) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        document.querySelector('form').appendChild(input);
+        return input;
+    }
+
+    // Track manual modifications
+    qtyTransInput.addEventListener('input', function() { this.dataset.userModified = 'true'; });
+    qtyRecInput.addEventListener('input', function() { this.dataset.userModified = 'true'; });
+    uomInput.addEventListener('input', function() { this.dataset.userModified = 'true'; });
+
+    joSelect.addEventListener('change', autoPopulateFields);
+
+    // Populate on load if Job Order is already selected (validation errors)
+    if (joSelect.value) {
+        autoPopulateFields();
+    }
+    // Fetch suggested PTT number if not provided
+    (async function() {
+        const input = document.getElementById('ptt_number');
+        if (!input || input.value) return;
+        try {
+            const resp = await fetch('/api/sequences/next?type=ptt');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.ptt_number) input.value = data.ptt_number;
+        } catch (e) {
+            console.error('Sequence fetch failed', e);
+        }
+    })();});
+</script>
+
 @endsection

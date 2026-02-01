@@ -20,7 +20,7 @@
         <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-3">
             Pending Transfer Approvals
             <span class="px-2.5 py-1 bg-red-500 text-white text-xs font-medium rounded-full" id="pending-count">
-                {{ App\Models\Transfer::where('transfer_status', 'pending')->count() }}
+                {{ App\Models\Transfer::where('status', 'pending')->count() }}
             </span>
         </h3>
         <p class="text-sm text-gray-600 mt-1">Approve transfers to automatically update inventory levels</p>
@@ -41,7 +41,7 @@
             <tbody class="divide-y divide-gray-200" id="pending-approvals">
                 @php
                     $pendingTransfers = App\Models\Transfer::with(['product', 'jobOrder', 'receivedBy'])
-                        ->where('transfer_status', 'pending')
+                        ->where('status', 'pending')
                         ->latest()
                         ->take(10)
                         ->get();
@@ -152,7 +152,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Code</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Stock</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Buffer Stock</th>
                     </tr>
@@ -162,8 +162,8 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->product->product_code }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $item->product->model_name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">{{ number_format($item->ending_count) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->buffer_stocks) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">{{ number_format($item->qty_actual_ending) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_buffer_stock) }}</td>
                     </tr>
                     @empty
                     <tr>

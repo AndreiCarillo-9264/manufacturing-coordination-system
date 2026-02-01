@@ -193,26 +193,26 @@
             <tbody>
                 @foreach($finishedGoods as $item)
                 <tr class="
-                    @if($item->ending_count < ($item->product->min_stock ?? 0))
+                    @if($item->qty_actual_ending < ($item->product->min_stock ?? 0))
                         highlight-low
-                    @elseif($item->variance_count != 0)
+                    @elseif($item->qty_variance != 0)
                         highlight-variance
                     @endif
                 ">
                     <td>{{ $item->product->model_name ?? $item->product->product_code ?? '—' }}</td>
-                    <td>{{ $item->product->customer_name ?? '—' }}</td>
-                    <td class="text-right">{{ number_format($item->beginning_count) }}</td>
-                    <td class="text-right @if($item->ending_count < ($item->product->min_stock ?? 0)) text-red @endif">
-                        <strong>{{ number_format($item->ending_count) }}</strong>
-                        @if($item->ending_count < ($item->product->min_stock ?? 0)) ⚠ @endif
+                    <td>{{ $item->product->customer ?? '—' }}</td>
+                    <td class="text-right">{{ number_format($item->qty_beginning) }}</td>
+                    <td class="text-right @if($item->qty_actual_ending < ($item->product->min_stock ?? 0)) text-red @endif">
+                        <strong>{{ number_format($item->qty_actual_ending) }}</strong>
+                        @if($item->qty_actual_ending < ($item->product->min_stock ?? 0)) ⚠ @endif
                     </td>
-                    <td class="text-right @if($item->variance_count != 0) text-orange @endif">
-                        {{ number_format($item->variance_count) }}
+                    <td class="text-right @if($item->qty_variance != 0) text-orange @endif">
+                        {{ number_format($item->qty_variance) }}
                     </td>
-                    <td class="text-right @if($item->variance_amount != 0) text-orange @endif">
-                        ₱{{ number_format($item->variance_amount, 2) }}
+                    <td class="text-right @if($item->amount_variance != 0) text-orange @endif">
+                        ₱{{ number_format($item->amount_variance, 2) }}
                     </td>
-                    <td class="text-right">₱{{ number_format($item->end_amt, 2) }}</td>
+                    <td class="text-right">₱{{ number_format($item->amount_ending, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>

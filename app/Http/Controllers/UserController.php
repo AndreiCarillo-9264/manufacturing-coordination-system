@@ -21,10 +21,10 @@ class UserController extends Controller
         // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -75,7 +75,7 @@ class UserController extends Controller
             activity()
                 ->performedOn($user)
                 ->causedBy(auth()->user())
-                ->withProperties(['new' => $user->toArray()])
+                ->withProperties(['new' => $user->makeHidden(['password'])->toArray()])
                 ->log('User created');
 
             DB::commit();
@@ -86,7 +86,9 @@ class UserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('User creation failed: ' . $e->getMessage());
+            Log::error('User creation failed: ' . $e->getMessage(), [
+                'admin_user_id' => auth()->id()
+            ]);
 
             return back()
                 ->withInput()
@@ -98,7 +100,7 @@ class UserController extends Controller
     {
         $this->authorize('view', $user);
 
-        $user->load(['activityLogs' => function($query) {
+        $user->load(['activityLogs' => function ($query) {
             $query->latest()->limit(20);
         }]);
 
@@ -123,7 +125,7 @@ class UserController extends Controller
         ];
 
         // Only admin can update these fields
-        if (auth()->user()->isAdmin()) {
+        if (auth()->user()->department === 'admin') {
             $rules['username'] = ['required', 'string', 'max:255', Rule::unique('users')->ignore($user)];
             $rules['department'] = 'required|in:admin,sales,production,inventory,logistics';
             $rules['password'] = 'nullable|string|min:8|confirmed';
@@ -134,7 +136,7 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $user->toArray();
+            $oldData = $user->makeHidden(['password'])->toArray();
 
             // Handle password update
             if (!empty($validated['password'])) {
@@ -160,7 +162,7 @@ class UserController extends Controller
             activity()
                 ->performedOn($user)
                 ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $user->toArray()])
+                ->withProperties(['old' => $oldData, 'new' => $user->makeHidden(['password'])->toArray()])
                 ->log('User updated');
 
             DB::commit();
@@ -171,7 +173,10 @@ class UserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('User update failed: ' . $e->getMessage());
+            Log::error('User update failed: ' . $e->getMessage(), [
+                'admin_user_id' => auth()->id(),
+                'user_id' => $user->id
+            ]);
 
             return back()
                 ->withInput()
@@ -183,47 +188,55 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
+        // Prevent self-deletion
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
+
         try {
+            DB::beginTransaction();
+
             // Delete profile picture
             if ($user->profile_picture) {
                 Storage::disk('public')->delete($user->profile_picture);
             }
 
+            $oldData = $user->makeHidden(['password'])->toArray();
             $user->delete();
 
             // Log activity
             activity()
                 ->causedBy(auth()->user())
-                ->withProperties(['old' => $user->toArray()])
+                ->withProperties(['old' => $oldData])
                 ->log('User deleted');
+
+            DB::commit();
 
             return redirect()
                 ->route('users.index')
                 ->with('success', 'User deleted successfully.');
 
         } catch (\Exception $e) {
-            Log::error('User deletion failed: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('User deletion failed: ' . $e->getMessage(), [
+                'admin_user_id' => auth()->id(),
+                'user_id' => $user->id
+            ]);
 
             return back()->with('error', 'Failed to delete user. Please try again.');
         }
     }
 
-    /**
-     * Show user profile
-     */
     public function profile()
     {
         $user = auth()->user();
-        $user->load(['activityLogs' => function($query) {
+        $user->load(['activityLogs' => function ($query) {
             $query->latest()->limit(10);
         }]);
 
         return view('users.profile', compact('user'));
     }
 
-    /**
-     * Update user profile
-     */
     public function updateProfile(Request $request)
     {
         $user = auth()->user();
@@ -267,7 +280,9 @@ class UserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Profile update failed: ' . $e->getMessage());
+            Log::error('Profile update failed: ' . $e->getMessage(), [
+                'user_id' => $user->id
+            ]);
 
             return back()->with('error', 'Failed to update profile. Please try again.');
         }

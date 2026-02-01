@@ -25,6 +25,24 @@
             <p><strong>Status</strong> will start as Pending</p>
         </div>
 
+        <!-- Suggested Identifiers (editable) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="jo_number" class="block text-sm font-medium text-gray-700 mb-1.5">JO Number</label>
+                <input type="text" id="jo_number" name="jo_number" value="{{ old('jo_number') }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('jo_number') border-red-500 @enderror" placeholder="Auto-suggested JO number, editable">
+                <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
+                @error('jo_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label for="po_number" class="block text-sm font-medium text-gray-700 mb-1.5">PO Number</label>
+                <input type="text" id="po_number" name="po_number" value="{{ old('po_number') }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('po_number') border-red-500 @enderror" placeholder="Auto-suggested PO number, editable">
+                <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
+                @error('po_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <!-- Date Needed -->
@@ -42,19 +60,19 @@
                     <option value="">— Select Product —</option>
                     @foreach($products as $product)
                         <option value="{{ $product->id }}" data-uom="{{ $product->uom }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
-                            {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer_name ?? 'N/A' }})
+                            {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer ?? 'N/A' }})
                         </option>
                     @endforeach
                 </select>
                 @error('product_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            <!-- Quantity -->
+            <!-- Quantity Ordered -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" name="qty" value="{{ old('qty', 1) }}" min="1"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="qty_ordered" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Ordered *</label>
+                <input type="number" name="qty_ordered" value="{{ old('qty_ordered', 1) }}" min="1"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_ordered') border-red-500 @enderror">
+                @error('qty_ordered') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM -->
@@ -118,6 +136,28 @@ document.addEventListener('DOMContentLoaded', function() {
             uomSelect.value = uom;
         }
     }
+
+    // Fetch suggested JO and PO numbers (PO depends on date_needed)
+    const joInput = document.getElementById('jo_number');
+    const poInput = document.getElementById('po_number');
+    const dateNeeded = document.querySelector('input[name="date_needed"]');
+
+    async function fetchJoPo() {
+        try {
+            const date = dateNeeded?.value || '';
+            const resp = await fetch('/api/sequences/next?type=job_order' + (date ? '&date=' + encodeURIComponent(date) : ''));
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (joInput && !joInput.value && data.jo_number) joInput.value = data.jo_number;
+            if (poInput && !poInput.value && data.po_number) poInput.value = data.po_number;
+        } catch (e) {
+            console.error('Sequence fetch failed', e);
+        }
+    }
+
+    // Fetch on load and when date_needed changes
+    fetchJoPo();
+    dateNeeded?.addEventListener('change', fetchJoPo);
 });
 </script>
 @endsection

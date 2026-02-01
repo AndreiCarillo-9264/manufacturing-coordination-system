@@ -17,29 +17,39 @@
         @method('PUT')
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Tag Number (Hidden, passed as is) -->
-            <input type="hidden" name="tag_number" value="{{ $actualInventory->tag_number }}">
+            <!-- Tag Number -->
+            <div>
+                <label for="tag_number" class="block text-sm font-medium text-gray-700 mb-1.5">Tag Number</label>
+                <input type="text" id="tag_number" name="tag_number" value="{{ old('tag_number', $actualInventory->tag_number) }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('tag_number') border-red-500 @enderror">
+                @error('tag_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div id="tag_number_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="tag_number_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="tag_number_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="tag_number_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
+            </div>
 
             <!-- Product (Read-only) -->
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
-                <input type="text" value="{{ $actualInventory->product->product_code }} — {{ $actualInventory->product->model_name }}" 
+                <input type="text" value="{{ $actualInventory->product->product_code }} — {{ $actualInventory->product->model_name }} ({{ $actualInventory->product->customer ?? 'N/A' }})" 
                        readonly class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
             </div>
 
-            <!-- Finished Goods Quantity -->
+            <!-- Counted Quantity -->
             <div>
-                <label for="fg_qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" id="fg_qty" name="fg_qty" value="{{ old('fg_qty', $actualInventory->fg_qty) }}" 
+                <label for="qty_counted" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
+                <input type="number" id="qty_counted" name="qty_counted" value="{{ old('qty_counted', $actualInventory->qty_counted) }}" 
                        min="0" step="1" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('fg_qty') border-red-500 @enderror">
-                @error('fg_qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_counted') border-red-500 @enderror">
+                @error('qty_counted') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM (Read-only) -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">UOM (Unit of Measure)</label>
-                <input type="text" value="{{ $actualInventory->uom }}" 
+                <input type="text" value="{{ $actualInventory->product->uom ?? '—' }}" 
                        readonly class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
             </div>
 
@@ -105,4 +115,40 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('tag_number');
+    const suggestionContainer = document.getElementById('tag_number_suggestion');
+    const suggestionText = document.getElementById('tag_number_suggestion_text');
+    const useBtn = document.getElementById('tag_number_use_suggestion');
+    const regenBtn = document.getElementById('tag_number_regenerate');
+
+    async function fetchSuggestion() {
+        try {
+            const resp = await fetch('/api/sequences/next?type=tag');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.tag_number) {
+                suggestionText.textContent = data.tag_number;
+                suggestionContainer.classList.remove('hidden');
+                useBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    useBtn.addEventListener('click', function() {
+        const txt = suggestionText.textContent;
+        if (txt) {
+            input.value = txt;
+            suggestionContainer.classList.add('hidden');
+        }
+    });
+
+    regenBtn.addEventListener('click', function() { fetchSuggestion(); });
+
+    fetchSuggestion();
+});
+</script>
+
 @endsection

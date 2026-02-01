@@ -47,11 +47,11 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select name="ds_status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
                         <option value="">All Status</option>
-                        <option value="pending" {{ request('ds_status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="urgent" {{ request('ds_status') == 'urgent' ? 'selected' : '' }}>Urgent</option>
-                        <option value="delivered" {{ request('ds_status') == 'delivered' ? 'selected' : '' }}>Delivered</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="urgent" {{ request('status') == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                        <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>Delivered</option>
                     </select>
                 </div>
 
@@ -69,22 +69,22 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0">
                 <tr>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">DS Status</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">DS Code</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivery Code</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivery Date</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Number</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PO Number</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code/ID</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Dimension</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty Scheduled</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">UOM</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PMP Commitment</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PPQC Commitment</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Encoded By</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Delivery Remarks</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
             </thead>
@@ -92,12 +92,12 @@
                 @forelse($deliverySchedules as $ds)
                 <tr class="hover:bg-gray-50 {{ $ds->isDelayed() ? 'bg-red-50' : '' }}">
                     <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                        @if($ds->ds_status)
+                        @if($ds->status)
                         <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full
-                            {{ $ds->ds_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                            {{ $ds->ds_status === 'urgent' ? 'bg-orange-100 text-orange-800' : '' }}
-                            {{ $ds->ds_status === 'delivered' || $ds->ds_status === 'complete' ? 'bg-green-100 text-green-800' : '' }}">
-                            {{ ucfirst($ds->ds_status) }}
+                            {{ $ds->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                            {{ $ds->status === 'urgent' ? 'bg-orange-100 text-orange-800' : '' }}
+                            {{ $ds->status === 'delivered' || $ds->status === 'complete' ? 'bg-green-100 text-green-800' : '' }}">
+                            {{ ucfirst($ds->status) }}
                             @if($ds->isDelayed())
                                 <span class="ml-1 text-red-600 font-bold">(Delayed)</span>
                             @endif
@@ -106,20 +106,20 @@
                         <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $ds->ds_delivery_code }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->date?->format('M d, Y') ?? '—' }}</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $ds->delivery_code }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->delivery_date?->format('M d, Y') ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->po_number ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $ds->product->product_code ?? $ds->product->id ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->product->customer ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->product->model_name ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($ds->product->description, 30) ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->product->dimension ?? '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap font-bold">{{ number_format($ds->qty) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap font-bold">{{ number_format($ds->qty_scheduled) }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->uom ?? ($ds->product->uom ?? '—') }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($ds->remarks, 25) ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($ds->pmp_commitment, 25) ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($ds->ppqc_commitment, 25) ?? '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->createdBy?->name ?? '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ $ds->date_encoded?->format('M d, Y') ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($ds->delivery_remarks, 25) ?? '—' }}</td>
                     <td class="px-4 py-3 text-sm whitespace-nowrap sticky right-0 bg-white">
                         <div class="flex gap-2">

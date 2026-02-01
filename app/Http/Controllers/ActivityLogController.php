@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ActivityLog::with('user')->latest();
+        $query = ActivityLog::with(['user', 'subject'])->latest();
 
         // Filter by user
         if ($request->filled('user_id')) {
@@ -39,15 +40,53 @@ class ActivityLogController extends Controller
         // Get unique model types for filter
         $modelTypes = ActivityLog::select('model_type')
             ->distinct()
-            ->pluck('model_type');
+            ->whereNotNull('model_type')
+            ->pluck('model_type')
+            ->map(function ($type) {
+                return [
+                    'value' => $type,
+                    'label' => class_basename($type)
+                ];
+            });
 
-        return view('activity-logs.index', compact('activityLogs', 'modelTypes'));
+        // Get unique actions for filter
+        $actions = ActivityLog::select('action')
+            ->distinct()
+            ->pluck('action');
+
+        // Get users for filter
+        $users = User::orderBy('name')->get();
+
+        return view('activity-logs.index', compact('activityLogs', 'modelTypes', 'actions', 'users'));
     }
 
     public function show(ActivityLog $activityLog)
     {
-        $activityLog->load('user');
+        $activityLog->load(['user', 'subject']);
 
         return view('activity-logs.show', compact('activityLog'));
+    }
+    public function clear(Request $request)
+    {
+        $this->authorize('delete', ActivityLog::class);
+
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:365'
+        ]);
+
+        try {
+            $date = now()->subDays($validated['days']);
+            $count = ActivityLog::where('created_at', '<', $date)->delete();
+
+            activity()
+                ->causedBy(auth()->user())
+                ->withProperties(['days' => $validated['days'], 'count' => $count])
+                ->log('Activity logs cleared');
+
+            return back()->with('success', "Successfully deleted {$count} old activity log(s).");
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to clear activity logs.');
+        }
     }
 }

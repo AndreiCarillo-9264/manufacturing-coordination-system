@@ -83,7 +83,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $jo->jo_number }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $jo->po_number ?? '—' }}</td>
                     <td class="px-6 py-4 text-sm text-gray-900">{{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">{{ $jo->product->customer_name ?? '—' }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">{{ $jo->product->customer ?? '—' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">{{ number_format($jo->qty) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $jo->uom }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</td>

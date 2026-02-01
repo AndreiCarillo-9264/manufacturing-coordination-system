@@ -136,9 +136,10 @@
 
             <!-- Logout at bottom -->
             <div class="absolute bottom-0 left-0 right-0 p-2 border-t border-gray-200 bg-[#f8f5f1]">
-                <form method="POST" action="{{ route('logout') }}" class="w-full">
+                <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="w-full flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-red-50 hover:text-red-700">
+                    <button type="submit"
+                            class="flex items-center w-full px-4 py-2.5 rounded-lg hover:bg-red-50 text-gray-700 hover:text-red-700 transition-colors">
                         <i class="fas fa-sign-out-alt w-5"></i>
                         <span class="ml-3">Logout</span>
                     </button>
@@ -148,13 +149,75 @@
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Header -->
             <header class="bg-white shadow-sm z-20">
-                <div class="px-6 py-4">
-                    <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between p-4">
+                    <div class="flex items-center gap-5">
+                        <div class="text-4xl">
+                            @yield('page-icon')
+                        </div>
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900">@yield('page-title', 'Dashboard')</h1>
-                            <p class="text-sm text-gray-500 mt-1">@yield('page-description', 'Overview of all operations')</p>
+                            <h2 class="text-2xl font-bold text-gray-800">@yield('page-title')</h2>
+                            <p class="text-sm text-gray-600">@yield('page-description')</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-5">
+                        <!-- Notification Bell -->
+                        <div class="relative" x-data="notificationDropdown()" x-init="init()">
+                            <button @click="toggleDropdown()" class="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span x-show="unreadCount > 0"
+                                      x-text="unreadCount"
+                                      class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold ring-2 ring-white">
+                                </span>
+                            </button>
+
+                            <div x-show="isOpen"
+                                 @click.outside="isOpen = false"
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 translate-y-1"
+                                 class="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-2xl z-50 border border-gray-200 overflow-hidden">
+
+                                <div class="p-4 border-b bg-gray-50">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-semibold text-gray-800">Notifications</h3>
+                                        <button @click="isOpen = false" class="text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="max-h-96 overflow-y-auto divide-y divide-gray-100">
+                                    <template x-for="notification in notifications" :key="notification.id">
+                                        <a :href="notification.link" @click="markAsRead(notification.database_id); isOpen = false" class="block p-4 hover:bg-gray-50 transition cursor-pointer">
+                                            <div class="flex items-start space-x-4">
+                                                <div :class="{
+                                                    'bg-yellow-100 text-yellow-600': notification.type === 'warning',
+                                                    'bg-blue-100 text-blue-600': notification.type === 'info',
+                                                    'bg-green-100 text-green-600': notification.type === 'success',
+                                                    'bg-red-100 text-red-600': notification.type === 'danger'
+                                                }" class="p-3 rounded-full flex-shrink-0">
+                                                    <i :class="'fas text-lg ' + notification.icon"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-semibold text-gray-900" x-text="notification.title"></p>
+                                                    <p class="text-sm text-gray-600 mt-1" x-text="notification.message"></p>
+                                                    <p class="text-xs text-gray-400 mt-2" x-text="notification.time"></p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </template>
+
+                                    <div x-show="notifications.length === 0" class="p-10 text-center text-gray-500">
+                                        <i class="fas fa-bell-slash text-4xl mb-3 opacity-70"></i>
+                                        <p class="text-sm">No new notifications</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex items-center space-x-3">
@@ -215,8 +278,79 @@
         </div>
     </div>
 
-    <!-- Include AI Assistant Floating Widget Script -->
-    <script src="{{ asset('js/ai-assistant-enhanced.js') }}"></script>
+    <script>
+        function notificationDropdown() {
+            return {
+                isOpen: false,
+                notifications: [],
+                unreadCount: 0,
+
+                init() {
+                    this.fetchNotifications();
+                    // Refresh notifications every 30 seconds
+                    setInterval(() => this.fetchNotifications(), 30000);
+                    // Listen for real-time notifications
+                    this.setupEcho();
+                },
+
+                fetchNotifications() {
+                    fetch('/notifications')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                this.notifications = data.notifications || [];
+                                this.unreadCount = data.unreadCount || 0;
+                            }
+                        })
+                        .catch(error => console.error('Failed to fetch notifications:', error));
+                },
+
+                setupEcho() {
+                    // Listen for new notifications from Laravel Echo
+                    if (typeof window.Echo !== 'undefined' && window.Echo) {
+                        const userId = @json(auth()->user()?->id);
+                        window.Echo.private(`App.Models.User.${userId}`)
+                            .notification((notification) => {
+                                console.log('New notification received:', notification);
+                                this.fetchNotifications();
+                            });
+                    }
+                },
+
+                toggleDropdown() {
+                    this.isOpen = !this.isOpen;
+                },
+
+                markAsRead(notificationId) {
+                    if (!notificationId) return;
+                    
+                    fetch('/notifications/mark-as-read', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ id: notificationId })
+                    })
+                    .then(() => this.fetchNotifications())
+                    .catch(error => console.error('Failed to mark notification as read:', error));
+                },
+
+                markAllAsRead() {
+                    fetch('/notifications/mark-all-as-read', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    })
+                    .then(() => this.fetchNotifications())
+                    .catch(error => console.error('Failed to mark all as read:', error));
+                }
+            }
+        }
+    </script>
+
 
     @stack('scripts')
 </body>

@@ -69,10 +69,10 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0 z-20">
                 <tr>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">#</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Count</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PC</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Area</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code / ID</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
@@ -81,7 +81,7 @@
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Beginning</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">In</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Out</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Theo End</th>
+                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Theoretical End</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Buffer Stocks</th>
                     <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Encoded By</th>
@@ -94,19 +94,19 @@
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $loop->iteration + ($finishedGoods->currentPage()-1) * $finishedGoods->perPage() }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->pc ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->count_pc_area ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $fg->product->product_code ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->qty_pc_area ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $fg->product->product_code ?? $fg->product->id ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->customer ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->model_name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($fg->product->description ?? '', 40) }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->dimension ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->uom3 ?? $fg->product->uom ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->beg) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->in_qty) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->out_qty) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->theo_end) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->uom ?? '—' }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->qty_beginning) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->qty_in) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->qty_out) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->qty_theoretical_ending) }}</td>
                     <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($fg->remarks ?? '', 30) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->buffer_stocks) }}</td>
+                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ number_format($fg->qty_buffer_stock) }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->encodedBy?->name ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $fg->product->date_encoded?->format('M d, Y') ?? '—' }}</td>
                     <td class="px-5 py-4 text-sm whitespace-nowrap sticky right-0 bg-white shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] z-10">

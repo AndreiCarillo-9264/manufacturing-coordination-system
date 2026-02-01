@@ -2,7 +2,7 @@
 
 @section('title', 'Actual Inventory Details')
 @section('page-icon') <i class="fas fa-boxes"></i> @endsection
-@section('page-title', 'Inventory Record: ' . ($actualInventory->job_order?->jo_number ?? 'N/A'))
+@section('page-title', 'Inventory Record: ' . ($actualInventory->tag_number ?? ($actualInventory->product?->product_code ?? 'N/A')))
 @section('page-description', 'Detailed view of actual inventory count')
 
 @section('content')
@@ -11,8 +11,8 @@
     <!-- Header -->
     <div class="p-6 border-b bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h3 class="text-xl font-semibold text-gray-800">{{ $actualInventory->job_order?->jo_number ?? 'Inventory Record' }}</h3>
-            <p class="text-sm text-gray-600 mt-1">Count Date: {{ $actualInventory->count_date?->format('M d, Y') ?? 'N/A' }}</p>
+            <h3 class="text-xl font-semibold text-gray-800">{{ $actualInventory->tag_number ?? ($actualInventory->product?->product_code ?? 'Inventory Record') }}</h3>
+            <p class="text-sm text-gray-600 mt-1">Count Date: {{ $actualInventory->counted_at?->format('M d, Y') ?? 'N/A' }}</p>
         </div>
         <div class="flex flex-wrap gap-3">
             @can('update', $actualInventory)
@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Customer</label>
-                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->product?->customer_name ?? 'N/A' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->product?->customer ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Status</label>
@@ -78,15 +78,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Count Date</label>
-                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->count_date?->format('M d, Y') ?? 'N/A' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->counted_at?->format('M d, Y') ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Count By</label>
-                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->count_by ?? 'N/A' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->countedBy?->name ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Verified By</label>
-                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->verified_by ?? 'N/A' }}</p>
+                    <p class="mt-1.5 text-gray-900">{{ $actualInventory->verifiedBy?->name ?? 'N/A' }}</p>
                 </div>
             </div>
         </div>
@@ -97,22 +97,22 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-blue-700 uppercase tracking-wide">Beginning Balance</label>
-                    <p class="mt-2 text-2xl font-bold text-blue-900">{{ $actualInventory->beg_balance ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-blue-900">{{ $actualInventory->product->finishedGood->qty_beginning ?? 0 }}</p>
                     <p class="text-xs text-blue-600 mt-1">Starting inventory</p>
                 </div>
                 <div class="bg-purple-50 border border-purple-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-purple-700 uppercase tracking-wide">Receipts</label>
-                    <p class="mt-2 text-2xl font-bold text-purple-900">{{ $actualInventory->receipts ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-purple-900">{{ $actualInventory->product->finishedGood->qty_in ?? 0 }}</p>
                     <p class="text-xs text-purple-600 mt-1">Goods received</p>
                 </div>
                 <div class="bg-orange-50 border border-orange-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-orange-700 uppercase tracking-wide">Issuances</label>
-                    <p class="mt-2 text-2xl font-bold text-orange-900">{{ $actualInventory->issuances ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-orange-900">{{ $actualInventory->product->finishedGood->qty_out ?? 0 }}</p>
                     <p class="text-xs text-orange-600 mt-1">Goods issued</p>
                 </div>
                 <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-green-700 uppercase tracking-wide">Ending Balance</label>
-                    <p class="mt-2 text-2xl font-bold text-green-900">{{ $actualInventory->ending_balance ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-green-900">{{ $actualInventory->product->finishedGood->qty_actual_ending ?? 0 }}</p>
                     <p class="text-xs text-green-600 mt-1">Final count</p>
                 </div>
             </div>
@@ -124,18 +124,18 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Physical Count</label>
-                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $actualInventory->phys_count ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $actualInventory->qty_counted ?? 0 }}</p>
                     <p class="text-xs text-gray-600 mt-1">Physically counted items</p>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">System Count</label>
-                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $actualInventory->system_count ?? 0 }}</p>
+                    <p class="mt-2 text-2xl font-bold text-gray-900">{{ $actualInventory->product->finishedGood->qty_theoretical_ending ?? 0 }}</p>
                     <p class="text-xs text-gray-600 mt-1">System calculated count</p>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Variance</label>
-                    <p class="mt-2 text-2xl font-bold {{ ($actualInventory->variance ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ ($actualInventory->variance ?? 0) >= 0 ? '+' : '' }}{{ $actualInventory->variance ?? 0 }}
+                    <p class="mt-2 text-2xl font-bold {{ (($actualInventory->qty_counted ?? 0) - ($actualInventory->product->finishedGood->qty_theoretical_ending ?? 0)) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                        {{ (($actualInventory->qty_counted ?? 0) - ($actualInventory->product->finishedGood->qty_theoretical_ending ?? 0)) >= 0 ? '+' : '' }}{{ ($actualInventory->qty_counted ?? 0) - ($actualInventory->product->finishedGood->qty_theoretical_ending ?? 0) }}
                     </p>
                     <p class="text-xs text-gray-600 mt-1">Difference</p>
                 </div>

@@ -233,7 +233,7 @@
                     <td>{{ $jo->jo_number }}</td>
                     <td>{{ $jo->po_number ?? '—' }}</td>
                     <td>{{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }}</td>
-                    <td>{{ $jo->product->customer_name ?? '—' }}</td>
+                    <td>{{ $jo->product->customer ?? '—' }}</td>
                     <td class="text-right">{{ number_format($jo->qty) }}</td>
                     <td>{{ $jo->uom }}</td>
                     <td>{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</td>

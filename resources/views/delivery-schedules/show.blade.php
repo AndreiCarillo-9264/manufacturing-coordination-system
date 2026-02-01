@@ -1,30 +1,30 @@
 @extends('layouts.app')
 
-@section('title', 'Delivery Schedule - ' . $deliverySchedule->ds_delivery_code)
+@section('title', 'Delivery Schedule - ' . $deliverySchedule->delivery_code)
 @section('page-icon') <i class="fas fa-truck"></i> @endsection
 @section('page-title', 'Delivery Schedule Details')
-@section('page-description', $deliverySchedule->ds_delivery_code)
+@section('page-description', $deliverySchedule->delivery_code)
 
 @section('content')
 <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
     <!-- Header -->
     <div class="p-6 border-b bg-gray-50 flex items-center justify-between">
         <div>
-            <h3 class="text-2xl font-bold text-gray-800">{{ $deliverySchedule->ds_delivery_code }}</h3>
+            <h3 class="text-2xl font-bold text-gray-800">{{ $deliverySchedule->delivery_code }}</h3>
             <p class="text-sm text-gray-600 mt-1">Delivery Schedule Details</p>
         </div>
         <div>
             <span class="inline-block px-4 py-2 rounded-full text-sm font-semibold
-                @if($deliverySchedule->ds_status === 'delivered')
+                @if($deliverySchedule->status === 'delivered')
                     bg-green-100 text-green-800
-                @elseif($deliverySchedule->ds_status === 'urgent')
+                @elseif($deliverySchedule->status === 'urgent')
                     bg-red-100 text-red-800
-                @elseif($deliverySchedule->ds_status === 'backlog')
+                @elseif($deliverySchedule->status === 'backlog')
                     bg-yellow-100 text-yellow-800
                 @else
                     bg-blue-100 text-blue-800
                 @endif">
-                {{ ucfirst($deliverySchedule->ds_status) }}
+                {{ ucfirst($deliverySchedule->status) }}
             </span>
         </div>
     </div>
@@ -38,7 +38,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Delivery Code</p>
-                    <p class="text-lg font-semibold text-gray-800">{{ $deliverySchedule->ds_delivery_code }}</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ $deliverySchedule->delivery_code }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Job Order</p>
@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Status</p>
-                    <p class="text-lg font-semibold text-gray-800">{{ ucfirst($deliverySchedule->ds_status) }}</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ ucfirst($deliverySchedule->status) }}</p>
                 </div>
             </div>
         </div>
@@ -73,7 +73,7 @@
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Customer</p>
-                    <p class="text-gray-800">{{ $deliverySchedule->product->customer_name ?? '—' }}</p>
+                    <p class="text-gray-800">{{ $deliverySchedule->product->customer ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Unit Price</p>
@@ -88,15 +88,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Quantity</p>
-                    <p class="text-lg font-semibold text-gray-800">{{ $deliverySchedule->qty }} {{ $deliverySchedule->uom }}</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ number_format($deliverySchedule->qty_scheduled ?? 0) }} {{ $deliverySchedule->uom ?? $deliverySchedule->product->uom ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Delivery Date</p>
-                    <p class="text-lg font-semibold text-gray-800">{{ $deliverySchedule->date->format('M d, Y') }}</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ $deliverySchedule->delivery_date?->format('M d, Y') ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Week Number</p>
-                    <p class="text-lg font-semibold text-gray-800">Week {{ $deliverySchedule->week_num ?? '—' }}</p>
+                    <p class="text-lg font-semibold text-gray-800">Week {{ $deliverySchedule->week_number ?? '—' }}</p>
                 </div>
             </div>
         </div>

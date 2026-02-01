@@ -14,19 +14,14 @@
         </div>
         <div class="text-right">
             <span class="inline-block px-3 py-1 rounded-full text-sm font-medium
-                @if($transfer->transfer_status === 'complete')
+                @if($transfer->status === 'complete')
                     bg-green-100 text-green-800
                 @else
                     bg-yellow-100 text-yellow-800
                 @endif">
-                {{ ucfirst($transfer->transfer_status) }}
+                {{ ucfirst($transfer->status) }}
             </span>
         </div>
-    </div>
-
-    <div class="p-6 space-y-6">
-
-        <!-- Basic Information -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="border-l-4 border-blue-500 pl-4">
                 <p class="text-xs text-gray-500 uppercase tracking-wide">PTT Number</p>
@@ -38,7 +33,7 @@
             </div>
             <div class="border-l-4 border-blue-500 pl-4">
                 <p class="text-xs text-gray-500 uppercase tracking-wide">Status</p>
-                <p class="text-lg font-semibold text-gray-800">{{ ucfirst($transfer->transfer_status) }}</p>
+                <p class="text-lg font-semibold text-gray-800">{{ ucfirst($transfer->status) }}</p>
             </div>
         </div>
 
@@ -49,6 +44,10 @@
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Product</p>
                     <p class="text-gray-800">{{ $transfer->product->product_code }} - {{ $transfer->product->model_name }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wide">Unit</p>
+                    <p class="text-gray-800">{{ $transfer->product->uom ?? 'pcs' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Section</p>
@@ -75,7 +74,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Quantity Produced</p>
-                    <p class="text-lg font-semibold text-gray-800">{{ $transfer->qty }} units</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ $transfer->qty_transferred }} units</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Quantity Received</p>
@@ -83,8 +82,8 @@
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Difference</p>
-                    <p class="text-lg font-semibold {{ $transfer->qty_received === $transfer->qty ? 'text-green-600' : 'text-yellow-600' }}">
-                        {{ $transfer->qty_received - $transfer->qty }}
+                    <p class="text-lg font-semibold {{ $transfer->qty_received === $transfer->qty_transferred ? 'text-green-600' : 'text-yellow-600' }}">
+                        {{ $transfer->qty_received - $transfer->qty_transferred }}
                     </p>
                 </div>
             </div>
@@ -96,17 +95,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Date Transferred</p>
-                    <p class="text-gray-800">{{ $transfer->date_transferred->format('M d, Y') }}</p>
-                    <p class="text-sm text-gray-600">{{ $transfer->transfer_time }}</p>
+                    <p class="text-gray-800">{{ $transfer->date_transferred?->format('M d, Y') ?? '—' }}</p>
+                    <p class="text-sm text-gray-600">{{ $transfer->time_transferred?->format('H:i') ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Date Received</p>
-                    <p class="text-gray-800">{{ $transfer->date_received->format('M d, Y') }}</p>
-                    <p class="text-sm text-gray-600">{{ $transfer->time_received }}</p>
+                    <p class="text-gray-800">{{ $transfer->date_received?->format('M d, Y') ?? '—' }}</p>
+                    <p class="text-sm text-gray-600">{{ $transfer->time_received?->format('H:i') ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Delivery Date</p>
-                    <p class="text-gray-800">{{ $transfer->delivery_date->format('M d, Y') }}</p>
+                    <p class="text-gray-800">{{ $transfer->date_delivery_scheduled?->format('M d, Y') ?? '—' }}</p>
                     <p class="text-sm text-gray-600">JIT: {{ $transfer->jit_days }} days</p>
                 </div>
             </div>
@@ -118,15 +117,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Unit Price</p>
-                    <p class="text-lg font-semibold text-gray-800">₱{{ number_format($transfer->selling_price, 2) }}</p>
+                    <p class="text-lg font-semibold text-gray-800">₱{{ number_format($transfer->unit_selling_price ?? 0, 2) }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Total Amount</p>
-                    <p class="text-lg font-semibold text-gray-800">₱{{ number_format($transfer->total_amount, 2) }}</p>
+                    <p class="text-lg font-semibold text-gray-800">₱{{ number_format($transfer->total_amount ?? 0, 2) }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">Week Number</p>
-                    <p class="text-lg font-semibold text-gray-800">Week {{ $transfer->week_num }}</p>
+                    <p class="text-lg font-semibold text-gray-800">Week {{ $transfer->week_number ?? '—' }}</p>
                 </div>
             </div>
         </div>
@@ -134,7 +133,7 @@
         <!-- Additional Information -->
         <div class="border-l-4 border-blue-500 pl-4 py-2">
             <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Received By</p>
-            <p class="text-gray-800">{{ $transfer->receivedBy->name }} ({{ $transfer->receivedBy->department }})</p>
+            <p class="text-gray-800">{{ $transfer->receivedBy?->name ?? '—' }} ({{ $transfer->receivedBy?->department ?? '—' }})</p>
         </div>
 
         <!-- Remarks -->

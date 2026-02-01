@@ -3,7 +3,7 @@
 @section('title', 'Edit Delivery Schedule')
 @section('page-icon') <i class="fas fa-edit"></i> @endsection
 @section('page-title', 'Edit Delivery Schedule')
-@section('page-description', 'Update delivery details for ' . $deliverySchedule->ds_delivery_code)
+@section('page-description', 'Update delivery details for ' . $deliverySchedule->delivery_code)
 
 @section('content')
 <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden max-w-4xl mx-auto">
@@ -19,29 +19,35 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Delivery Code (Read-only) -->
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Code</label>
-                <input type="text" value="{{ $deliverySchedule->ds_delivery_code }}" readonly
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
+                <label for="delivery_code" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Code</label>
+                <input type="text" id="delivery_code" name="delivery_code" value="{{ old('delivery_code', $deliverySchedule->delivery_code) }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_code') border-red-500 @enderror">
+                @error('delivery_code') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div id="delivery_code_suggestion" class="mt-2 text-sm text-gray-500 hidden">
+                    Suggested: <span id="delivery_code_suggestion_text" class="font-mono text-gray-700"></span>
+                    <button type="button" id="delivery_code_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
+                    <button type="button" id="delivery_code_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
+                </div>
             </div>
 
             <!-- Job Order -->
             <div class="md:col-span-2">
-                <label for="jo_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
-                <select id="jo_id" name="jo_id" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('jo_id') border-red-500 @enderror">
+                <label for="job_order_id" class="block text-sm font-medium text-gray-700 mb-1.5">Job Order *</label>
+                <select id="job_order_id" name="job_order_id" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('job_order_id') border-red-500 @enderror">
                     @foreach($jobOrders as $jo)
                     <option value="{{ $jo->id }}" 
                             data-po-number="{{ $jo->po_number }}"
                             data-product-code="{{ $jo->product->product_code }}"
                             data-product-name="{{ $jo->product->model_name ?? $jo->product->product_code }}"
                             data-uom="{{ $jo->product->uom }}"
-                            data-qty="{{ $jo->qty }}"
-                            {{ old('jo_id', $deliverySchedule->jo_id) == $jo->id ? 'selected' : '' }}>
+                            data-qty="{{ $jo->qty_ordered }}"
+                            {{ old('job_order_id', $deliverySchedule->job_order_id) == $jo->id ? 'selected' : '' }}>
                         {{ $jo->jo_number }} — {{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }} (PO: {{ $jo->po_number ?? 'N/A' }})
                     </option>
                     @endforeach
                 </select>
-                @error('jo_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('job_order_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Product Code (Auto-populated) -->
@@ -54,18 +60,18 @@
 
             <!-- Delivery Date -->
             <div>
-                <label for="date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
-                <input type="date" id="date" name="date" value="{{ old('date', $deliverySchedule->date->format('Y-m-d')) }}" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('date') border-red-500 @enderror">
-                @error('date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-1.5">Delivery Date *</label>
+                <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $deliverySchedule->delivery_date?->format('Y-m-d')) }}" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('delivery_date') border-red-500 @enderror">
+                @error('delivery_date') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- Quantity -->
             <div>
-                <label for="qty" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" id="qty" name="qty" value="{{ old('qty', $deliverySchedule->qty) }}" min="0" step="1" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty') border-red-500 @enderror">
-                @error('qty') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                <label for="qty_scheduled" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
+                <input type="number" id="qty_scheduled" name="qty_scheduled" value="{{ old('qty_scheduled', $deliverySchedule->qty_scheduled) }}" min="0" step="1" required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_scheduled') border-red-500 @enderror">
+                @error('qty_scheduled') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <!-- UOM -->
@@ -100,10 +106,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const joSelect = document.getElementById('jo_id');
+    const joSelect = document.getElementById('job_order_id');
     const productInfo = document.getElementById('product_info');
     const uomInput = document.getElementById('uom');
-    const qtyInput = document.getElementById('qty');
+    const qtyInput = document.getElementById('qty_scheduled');
     
     function autoPopulateFields() {
         const selectedOption = joSelect.options[joSelect.selectedIndex];
@@ -148,6 +154,40 @@ document.addEventListener('DOMContentLoaded', function() {
     if (joSelect.value) {
         autoPopulateFields();
     }
+
+    // Suggest delivery code (show suggestion, do not overwrite)
+    (async function() {
+        const input = document.getElementById('delivery_code');
+        const suggestionContainer = document.getElementById('delivery_code_suggestion');
+        const suggestionText = document.getElementById('delivery_code_suggestion_text');
+        const useBtn = document.getElementById('delivery_code_use_suggestion');
+        const regenBtn = document.getElementById('delivery_code_regenerate');
+
+        async function fetchSuggestion() {
+            try {
+                const resp = await fetch('/api/sequences/next?type=ds');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.delivery_code) {
+                    suggestionText.textContent = data.delivery_code;
+                    suggestionContainer.classList.remove('hidden');
+                    useBtn.disabled = false;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        useBtn.addEventListener('click', function() {
+            const txt = suggestionText.textContent;
+            if (txt) {
+                input.value = txt;
+                suggestionContainer.classList.add('hidden');
+            }
+        });
+
+        regenBtn.addEventListener('click', fetchSuggestion);
+
+        fetchSuggestion();
+    })();
 });
 </script>
 @endsection

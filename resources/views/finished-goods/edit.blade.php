@@ -21,23 +21,23 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Theoretical Ending Count</label>
-                    <input type="number" value="{{ $finishedGood->theo_end }}" 
+                    <input type="number" value="{{ $finishedGood->qty_theoretical_ending }}" 
                            class="w-full px-3 py-2 border rounded-lg bg-gray-100" disabled readonly>
                 </div>
 
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Actual Ending Count *</label>
-                    <input type="number" name="ending_count" value="{{ old('ending_count', $finishedGood->ending_count) }}" 
+                    <input type="number" name="qty_actual_ending" value="{{ old('qty_actual_ending', $finishedGood->qty_actual_ending) }}" 
                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" min="0" required>
-                    @error('ending_count') <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                    @error('qty_actual_ending') <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
                 </div>
             </div>
 
             <div class="mb-4">
                 <label class="block text-gray-700 font-bold mb-2">Buffer Stocks *</label>
-                <input type="number" name="buffer_stocks" value="{{ old('buffer_stocks', $finishedGood->buffer_stocks) }}" 
+                <input type="number" name="qty_buffer_stock" value="{{ old('qty_buffer_stock', $finishedGood->qty_buffer_stock) }}" 
                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" min="0" required>
-                @error('buffer_stocks') <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
+                @error('qty_buffer_stock') <span class="text-red-600 text-xs">{{ $message }}</span> @enderror
             </div>
 
             <div class="mb-4">
