@@ -24,21 +24,21 @@ class ProductController extends Controller
                 $q->where('product_code', 'like', "%{$search}%")
                     ->orWhere('model_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhere('customer', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%");
             });
         }
 
         // Filter by customer
         if ($request->filled('customer')) {
-            $query->where('customer', $request->customer);
+            $query->where('customer_name', $request->customer);
         }
 
         $products = $query->latest()->paginate(15);
 
         // Get unique customers for filter dropdown
-        $customers = Product::whereNotNull('customer')
+        $customers = Product::whereNotNull('customer_name')
             ->distinct()
-            ->pluck('customer')
+            ->pluck('customer_name')
             ->sort()
             ->values();
 
@@ -61,45 +61,22 @@ class ProductController extends Controller
 
             $product = Product::create($request->validated());
 
-            // Log activity
-            activity()
-                ->performedOn($product)
-                ->causedBy(auth()->user())
-                ->withProperties(['new' => $product->toArray()])
-                ->log('Product created');
-
             DB::commit();
 
             return redirect()
-                ->route('products.show', $product)
+                ->route('products.index')
                 ->with('success', 'Product created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Product creation failed: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
-                'data' => $request->validated()
+                'user_id' => auth()->id()
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create product. Please try again.');
+                ->with('error', 'Failed to create product.');
         }
-    }
-
-    public function show(Product $product)
-    {
-        $this->authorize('view', $product);
-
-        $product->load([
-            'encodedBy',
-            'finishedGood',
-            'jobOrders' => function ($query) {
-                $query->latest()->limit(10);
-            }
-        ]);
-
-        return view('products.show', compact('product'));
     }
 
     public function edit(Product $product)
@@ -117,20 +94,32 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $oldData = $product->toArray();
-            $product->update($request->validated());
 
-            // Update finished good selling price if product selling price changed
-            if ($product->wasChanged('selling_price') && $product->finishedGood) {
-                // Note: FinishedGood doesn't have cur_sell_price in migration
-                // This would need to be calculated from product relationship
+            $validated = $request->validated();
+
+            // If product_code changed, follow versioning: base-code -> base-code-01, base-code-02, ...
+            if (isset($validated['product_code']) && $validated['product_code'] !== $product->product_code) {
+                // Determine base code by stripping trailing -NN if present
+                $currentCode = $product->product_code;
+                $base = preg_replace('/-\d{2}$/', '', $currentCode);
+
+                // Find highest existing suffix for this base
+                $matching = Product::where('product_code', 'like', $base . '-%')->pluck('product_code')->toArray();
+                $max = 0;
+                foreach ($matching as $code) {
+                    $parts = explode('-', $code);
+                    $last = end($parts);
+                    if (preg_match('/^\d{2}$/', $last)) {
+                        $num = (int) $last;
+                        if ($num > $max) $max = $num;
+                    }
+                }
+                $newSuffix = $max + 1;
+                $newCode = $base . '-' . sprintf('%02d', $newSuffix);
+                $validated['product_code'] = $newCode;
             }
 
-            // Log activity
-            activity()
-                ->performedOn($product)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $product->toArray()])
-                ->log('Product updated');
+            $product->update($validated);
 
             DB::commit();
 
@@ -163,14 +152,7 @@ class ProductController extends Controller
 
             DB::beginTransaction();
 
-            $oldData = $product->toArray();
             $product->delete();
-
-            // Log activity
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData])
-                ->log('Product deleted');
 
             DB::commit();
 
@@ -187,5 +169,44 @@ class ProductController extends Controller
 
             return back()->with('error', 'Failed to delete product. Please try again.');
         }
+    }
+
+    public function export()
+    {
+        $this->authorize('viewAny', Product::class);
+
+        $data = Product::all();
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename=products_' . now()->format('Y-m-d_His') . '.csv',
+        ];
+        
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            
+            fputcsv($file, ['Product Code', 'Model Name', 'Description', 'Category', 'Dimension', 'UOM', 'Reorder Level', 'Currency', 'Unit Cost', 'Selling Price', 'Remarks', 'Created At']);
+            
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->product_code ?? '',
+                    $row->model_name ?? '',
+                    $row->description ?? '',
+                    $row->category ?? '',
+                    $row->dimension ?? '',
+                    $row->uom ?? '',
+                    $row->reorder_level ?? 0,
+                    $row->currency ?? '',
+                    $row->unit_cost ?? 0,
+                    $row->selling_price ?? 0,
+                    $row->remarks ?? '',
+                    $row->created_at?->format('Y-m-d H:i:s') ?? '',
+                ]);
+            }
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

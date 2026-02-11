@@ -19,10 +19,21 @@ class JobOrderApprovedNotification extends Notification
 
     public function via(object $notifiable)
     {
-        return ['database'];
+        // Store and broadcast to enable real-time notification delivery
+        return ['database', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable)
+    {
+        return $this->payload();
+    }
+
+    public function toArray(object $notifiable)
+    {
+        return $this->payload();
+    }
+
+    private function payload(): array
     {
         return [
             'type' => 'job_order_approved',

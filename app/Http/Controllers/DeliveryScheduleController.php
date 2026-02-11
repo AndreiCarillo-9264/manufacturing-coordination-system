@@ -22,7 +22,7 @@ class DeliveryScheduleController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('delivery_code', 'like', "%{$search}%")
+                $q->where('ds_code', 'like', "%{$search}%")
                     ->orWhereHas('jobOrder', function ($q2) use ($search) {
                         $q2->where('po_number', 'like', "%{$search}%");
                     });
@@ -34,11 +34,12 @@ class DeliveryScheduleController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('ds_status', $request->status);
         }
 
         if ($request->has('delayed')) {
-            $query->delayed();
+            $query->where('ds_status', '!=', 'DELIVERED')
+                ->where('delivery_date', '<', today());
         }
 
         if ($request->filled('date_from')) {
@@ -62,7 +63,7 @@ class DeliveryScheduleController extends Controller
         $this->authorize('create', DeliverySchedule::class);
 
         $jobOrders = JobOrder::with('product')
-            ->whereIn('status', ['approved', 'in_progress', 'completed'])
+            ->whereIn('jo_status', ['Approved', 'In Progress', 'JO Full'])
             ->orderBy('jo_number', 'desc')
             ->get();
 
@@ -74,54 +75,60 @@ class DeliveryScheduleController extends Controller
         $this->authorize('create', DeliverySchedule::class);
 
         try {
-            DB::beginTransaction();
-
             $validated = $request->validated();
-            $jobOrder = JobOrder::findOrFail($validated['job_order_id']);
 
-            // Auto-fill related data
-            $validated['product_id'] = $jobOrder->product_id;
-            $validated['week_number'] = (int) date('W', strtotime($validated['delivery_date']));
-            
-            if (empty($validated['date_encoded'])) {
-                $validated['date_encoded'] = now()->toDateString();
+            // Get job order with product details
+            $jobOrder = \App\Models\JobOrder::with('product')->find($validated['job_order_id']);
+            if (!$jobOrder) {
+                return back()->withInput()->with('error', 'Job order not found.');
             }
 
-            $deliverySchedule = DeliverySchedule::create($validated);
+            // Check if finished goods has stock available
+            $finishedGood = \App\Models\FinishedGood::where('product_id', $jobOrder->product_id)->first();
+            if (!$finishedGood || $finishedGood->current_qty <= 0) {
+                return back()->withInput()->with('error', 'Cannot create delivery: No verified inventory available for this product. Please verify the actual inventory count first.');
+            }
 
-            // Log activity
-            activity()
-                ->performedOn($deliverySchedule)
-                ->causedBy(auth()->user())
-                ->withProperties(['new' => $deliverySchedule->toArray()])
-                ->log('Delivery Schedule created');
+            // Auto-fill product details from job order
+            $validated['product_id'] = $validated['product_id'] ?? $jobOrder->product_id;
+            $validated['product_code'] = $jobOrder->product_code;
+            $validated['customer_name'] = $jobOrder->customer_name;
+            $validated['model_name'] = $jobOrder->model_name;
+            $validated['description'] = $jobOrder->description;
+            $validated['uom'] = $jobOrder->uom ?? 'PC/S';
+            $validated['dimension'] = $jobOrder->product?->dimension;
+            
+            // Fill additional fields from job order
+            $validated['jo_number'] = $validated['jo_number'] ?? $jobOrder->jo_number;
+            $validated['po_number'] = $validated['po_number'] ?? $jobOrder->po_number;
+            $validated['jo_balance'] = $jobOrder->jo_balance ?? 0;
+            $validated['fg_stocks'] = $finishedGood->current_qty ?? 0;
+            $validated['buffer_stocks'] = $finishedGood->buffer_stocks ?? 0;
+            $validated['max_quantity'] = $validated['max_quantity'] ?? $validated['quantity'];
+            $validated['ds_status'] = $validated['ds_status'] ?? 'ON SCHEDULE';
+            $validated['encoded_by'] = auth()->id();
+
+            DB::beginTransaction();
+
+            $deliverySchedule = DeliverySchedule::create($validated);
 
             DB::commit();
 
             return redirect()
-                ->route('delivery-schedules.show', $deliverySchedule)
+                ->route('delivery-schedules.index')
                 ->with('success', 'Delivery Schedule created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Delivery Schedule creation failed: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
-                'data' => $request->validated()
+                'trace' => $e->getTraceAsString()
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create delivery schedule.');
+                ->with('error', 'Failed to create delivery schedule: ' . $e->getMessage());
         }
-    }
-
-    public function show(DeliverySchedule $deliverySchedule)
-    {
-        $this->authorize('view', $deliverySchedule);
-
-        $deliverySchedule->load(['jobOrder.product', 'product']);
-
-        return view('delivery-schedules.show', compact('deliverySchedule'));
     }
 
     public function edit(DeliverySchedule $deliverySchedule)
@@ -129,8 +136,8 @@ class DeliveryScheduleController extends Controller
         $this->authorize('update', $deliverySchedule);
 
         $jobOrders = JobOrder::with('product')
-            ->whereIn('status', ['approved', 'in_progress', 'completed'])
-            ->orderBy('jo_number')
+            ->whereIn('jo_status', ['Approved', 'In Progress', 'JO Full'])
+            ->orderBy('jo_number', 'desc')
             ->get();
 
         return view('delivery-schedules.edit', compact('deliverySchedule', 'jobOrders'));
@@ -144,21 +151,7 @@ class DeliveryScheduleController extends Controller
             DB::beginTransaction();
 
             $oldData = $deliverySchedule->toArray();
-            $validated = $request->validated();
-
-            // Update week number if delivery date changed
-            if (isset($validated['delivery_date'])) {
-                $validated['week_number'] = (int) date('W', strtotime($validated['delivery_date']));
-            }
-
-            $deliverySchedule->update($validated);
-
-            // Log activity
-            activity()
-                ->performedOn($deliverySchedule)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $deliverySchedule->toArray()])
-                ->log('Delivery Schedule updated');
+            $deliverySchedule->update($request->validated());
 
             DB::commit();
 
@@ -186,14 +179,7 @@ class DeliveryScheduleController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $deliverySchedule->toArray();
             $deliverySchedule->delete();
-
-            // Log activity
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData])
-                ->log('Delivery Schedule deleted');
 
             DB::commit();
 
@@ -208,13 +194,10 @@ class DeliveryScheduleController extends Controller
                 'delivery_schedule_id' => $deliverySchedule->id
             ]);
 
-            return back()->with('error', 'Failed to delete delivery schedule. Please try again.');
+            return back()->with('error', 'Failed to delete delivery schedule.');
         }
     }
 
-    /**
-     * Mark delivery schedule as complete
-     */
     public function markComplete(DeliverySchedule $deliverySchedule)
     {
         $this->authorize('update', $deliverySchedule);
@@ -223,23 +206,6 @@ class DeliveryScheduleController extends Controller
             DB::beginTransaction();
 
             $deliverySchedule->markComplete();
-
-            // Update finished goods out quantity
-            $finishedGood = $deliverySchedule->product->finishedGood;
-            if ($finishedGood) {
-                $finishedGood->increment('qty_out', $deliverySchedule->qty_scheduled);
-                
-                // Calculate amount out
-                $amountOut = $deliverySchedule->qty_scheduled * $deliverySchedule->product->selling_price;
-                $finishedGood->increment('amount_out', $amountOut);
-            }
-
-            // Log activity
-            activity()
-                ->performedOn($deliverySchedule)
-                ->causedBy(auth()->user())
-                ->withProperties(['status' => 'complete'])
-                ->log('Delivery Schedule marked as complete');
 
             DB::commit();
 
@@ -267,32 +233,28 @@ class DeliveryScheduleController extends Controller
             DB::beginTransaction();
 
             // Ensure qty_delivered is set (default to scheduled qty)
-            if (empty($deliverySchedule->qty_delivered)) {
-                $deliverySchedule->update(['qty_delivered' => $deliverySchedule->qty_scheduled]);
+            if (empty($deliverySchedule->delivered_quantity)) {
+                $deliverySchedule->update(['delivered_quantity' => $deliverySchedule->quantity]);
             }
 
-            // Mark as complete (status => 'complete')
+            // Mark as complete (status => 'DELIVERED')
             $deliverySchedule->markComplete();
 
-            // Update finished goods out quantity (defensive lookup)
-            $product = Product::find($deliverySchedule->product_id);
-            if ($product && $product->finishedGood) {
-                $finishedGood = $product->finishedGood;
-                $finishedGood->increment('qty_out', $deliverySchedule->qty_delivered);
-
-                // Calculate amount out
-                $amountOut = $deliverySchedule->qty_delivered * $product->selling_price;
-                $finishedGood->increment('amount_out', $amountOut);
-            }
-
-            // Log activity
-            activity()
-                ->performedOn($deliverySchedule)
-                ->causedBy(auth()->user())
-                ->withProperties(['status' => 'delivered', 'qty_delivered' => $deliverySchedule->qty_delivered])
-                ->log('Delivery Schedule marked as delivered');
+            // Note: We do NOT remove stock here - we just mark as delivered for audit trail
+            // The finished goods record remains in the system with an updated status
+            // This keeps a complete history of all deliveries without data loss
 
             DB::commit();
+
+            // Return JSON for AJAX requests, redirect for regular requests
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'status' => 'DELIVERED',
+                    'delivery_schedule_id' => $deliverySchedule->id,
+                    'message' => 'Delivery marked as delivered successfully.'
+                ]);
+            }
 
             return back()->with('success', 'Delivery marked as delivered successfully.');
 
@@ -303,7 +265,56 @@ class DeliveryScheduleController extends Controller
                 'delivery_schedule_id' => $deliverySchedule->id
             ]);
 
-            return back()->with('error', 'Failed to mark as delivered. Please try again.');
+            $errorMsg = 'Failed to mark as delivered. Please try again.';
+
+            // Return JSON error for AJAX requests
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMsg,
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', $errorMsg);
         }
+    }
+
+    public function export()
+    {
+        $this->authorize('viewAny', DeliverySchedule::class);
+
+        $data = DeliverySchedule::with('jobOrder', 'product')->get();
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename=delivery_schedules_' . now()->format('Y-m-d_His') . '.csv',
+        ];
+        
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            
+            fputcsv($file, ['Delivery Code', 'Job Order', 'Customer Name', 'Product Code', 'Model Name', 'Quantity', 'Delivered Qty', 'Delivery Date', 'Status', 'Reason', 'Created At']);
+            
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->ds_code ?? '',
+                    $row->jobOrder?->jo_number ?? '',
+                    $row->customer_name ?? '',
+                    $row->product_code ?? '',
+                    $row->model_name ?? '',
+                    $row->quantity ?? 0,
+                    $row->delivered_quantity ?? 0,
+                    $row->delivery_date?->format('Y-m-d') ?? '',
+                    $row->ds_status ?? '',
+                    $row->reason ?? '',
+                    $row->created_at?->format('Y-m-d H:i:s') ?? '',
+                ]);
+            }
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

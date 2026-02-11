@@ -41,13 +41,11 @@
             </div>
         </div>
 
-        <div class="flex gap-3 pt-4">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium transition">
-                <i class="fas fa-search mr-2"></i>Apply Filters
-            </button>
+        <div class="flex gap-3 pt-4 items-center">
+            <!-- filters submitted by pressing Enter or via form submission -->
             <a href="{{ route('reports.job-orders') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-md text-sm font-medium transition">
                 <i class="fas fa-redo mr-2"></i>Reset
-            </a>
+            </a> 
             <form action="{{ route('reports.job-orders.pdf') }}" method="GET" class="flex gap-2" style="margin-left: auto;">
                 @foreach(request()->query() as $key => $value)
                 <input type="hidden" name="{{ $key }}" value="{{ $value }}">
@@ -98,7 +96,7 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        ₱{{ number_format($jo->qty * $jo->product->selling_price, 2) }}
+                        {{ currencySymbol($jo->product->currency ?? 'PHP') }}{{ number_format($jo->qty * $jo->product->selling_price, 2) }}
                     </td>
                 </tr>
                 @empty
@@ -123,7 +121,11 @@
             </div>
             <div>
                 <p class="text-sm text-gray-600">Total Amount</p>
-                <p class="text-2xl font-bold text-gray-900">₱{{ number_format($totalAmount, 2) }}</p>
+                @if(isset($reportCurrency))
+                <p class="text-2xl font-bold text-gray-900">{{ currencySymbol($reportCurrency) }}{{ number_format($totalAmount, 2) }}</p>
+                @else
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($totalAmount, 2) }} <small class="text-gray-500">(Multiple Currencies)</small></p>
+                @endif
             </div>
         </div>
     </div>

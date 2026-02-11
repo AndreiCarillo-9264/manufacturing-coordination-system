@@ -33,7 +33,7 @@ class JobOrderController extends Controller
 
         // Filter by status
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('jo_status', $request->status);
         }
 
         // Filter by fulfillment status
@@ -67,9 +67,7 @@ class JobOrderController extends Controller
     {
         $this->authorize('create', JobOrder::class);
 
-        $products = Product::select('id', 'product_code', 'model_name', 'uom', 'selling_price')
-            ->orderByRaw("COALESCE(model_name, product_code) ASC")
-            ->get();
+        $products = Product::orderByRaw("COALESCE(model_name, product_code) ASC")->get();
 
         return view('job-orders.create', compact('products'));
     }
@@ -81,14 +79,9 @@ class JobOrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $jobOrder = JobOrder::create($request->validated());
+            $validated = $request->validated();
 
-            // Log activity
-            activity()
-                ->performedOn($jobOrder)
-                ->causedBy(auth()->user())
-                ->withProperties(['new' => $jobOrder->toArray()])
-                ->log('Job Order created');
+            $jobOrder = JobOrder::create($validated);
 
             DB::commit();
 
@@ -98,49 +91,26 @@ class JobOrderController extends Controller
             }
 
             return redirect()
-                ->route('job-orders.show', $jobOrder)
+                ->route('job-orders.index')
                 ->with('success', 'Job Order created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Job Order creation failed: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
-                'data' => $request->validated()
+                'user_id' => auth()->id()
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create job order. Please try again.');
+                ->with('error', 'Failed to create job order.');
         }
-    }
-
-    public function show(JobOrder $jobOrder)
-    {
-        $this->authorize('view', $jobOrder);
-
-        $jobOrder->load([
-            'product',
-            'encodedBy',
-            'transfers' => function ($query) {
-                $query->latest('date_transferred');
-            },
-            'deliverySchedules' => function ($query) {
-                $query->latest('delivery_date');
-            }
-        ]);
-
-        return view('job-orders.show', compact('jobOrder'));
     }
 
     public function edit(JobOrder $jobOrder)
     {
         $this->authorize('update', $jobOrder);
 
-        $products = Product::select('id', 'product_code', 'model_name', 'uom')
-            ->orderByRaw("COALESCE(model_name, product_code) ASC")
-            ->get();
-
-        return view('job-orders.edit', compact('jobOrder', 'products'));
+        return view('job-orders.edit', compact('jobOrder'));
     }
 
     public function update(UpdateJobOrderRequest $request, JobOrder $jobOrder)
@@ -150,24 +120,10 @@ class JobOrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldStatus = $jobOrder->status;
             $oldData = $jobOrder->toArray();
-            
             $jobOrder->update($request->validated());
 
-            // Log activity
-            activity()
-                ->performedOn($jobOrder)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $jobOrder->toArray()])
-                ->log('Job Order updated');
-
             DB::commit();
-
-            // Broadcast status change if status changed
-            if ($oldStatus !== $jobOrder->status && class_exists('\App\Events\JobOrderStatusChanged')) {
-                event(new \App\Events\JobOrderStatusChanged($jobOrder, $oldStatus, $jobOrder->status));
-            }
 
             return redirect()
                 ->route('job-orders.index')
@@ -182,7 +138,7 @@ class JobOrderController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update job order. Please try again.');
+                ->with('error', 'Failed to update job order.');
         }
     }
 
@@ -198,14 +154,7 @@ class JobOrderController extends Controller
 
             DB::beginTransaction();
 
-            $oldData = $jobOrder->toArray();
             $jobOrder->delete();
-
-            // Log activity
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData])
-                ->log('Job Order deleted');
 
             DB::commit();
 
@@ -220,48 +169,23 @@ class JobOrderController extends Controller
                 'job_order_id' => $jobOrder->id
             ]);
 
-            return back()->with('error', 'Failed to delete job order. Please try again.');
+            return back()->with('error', 'Failed to delete job order.');
         }
     }
 
-    /**
-     * Approve a job order
-     */
     public function approve(JobOrder $jobOrder)
     {
-        $this->authorize('approve', $jobOrder);
-
-        if ($jobOrder->status !== 'pending') {
-            return back()->with('error', 'Only pending job orders can be approved.');
-        }
-
         try {
+            // Check if job order is in pending status before approval
+            if ($jobOrder->jo_status !== 'Pending') {
+                return back()->with('error', 'Only pending job orders can be approved. Current status: ' . $jobOrder->jo_status);
+            }
+
             DB::beginTransaction();
 
-            $oldStatus = $jobOrder->status;
             $jobOrder->approve();
 
-            // Log activity
-            activity()
-                ->performedOn($jobOrder)
-                ->causedBy(auth()->user())
-                ->withProperties(['status_changed' => ['from' => $oldStatus, 'to' => 'approved']])
-                ->log('Job Order approved');
-
-            // Notify production department
-            if (class_exists('\App\Notifications\JobOrderApprovedNotification')) {
-                $productionUsers = \App\Models\User::where('department', 'production')->get();
-                foreach ($productionUsers as $user) {
-                    $user->notify(new \App\Notifications\JobOrderApprovedNotification($jobOrder));
-                }
-            }
-
             DB::commit();
-
-            // Broadcast status change
-            if (class_exists('\App\Events\JobOrderStatusChanged')) {
-                event(new \App\Events\JobOrderStatusChanged($jobOrder, $oldStatus, $jobOrder->status));
-            }
 
             return back()->with('success', 'Job Order approved successfully.');
 
@@ -272,40 +196,20 @@ class JobOrderController extends Controller
                 'job_order_id' => $jobOrder->id
             ]);
 
-            return back()->with('error', 'Failed to approve job order. Please try again.');
+            return back()->with('error', 'Failed to approve job order: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Cancel a job order
-     */
     public function cancel(JobOrder $jobOrder)
     {
-        $this->authorize('cancel', $jobOrder);
-
-        if (!in_array($jobOrder->status, ['pending', 'approved'])) {
-            return back()->with('error', 'Can only cancel pending or approved job orders.');
-        }
+        $this->authorize('update', $jobOrder);
 
         try {
             DB::beginTransaction();
 
-            $oldStatus = $jobOrder->status;
             $jobOrder->cancel();
 
-            // Log activity
-            activity()
-                ->performedOn($jobOrder)
-                ->causedBy(auth()->user())
-                ->withProperties(['status_changed' => ['from' => $oldStatus, 'to' => 'cancelled']])
-                ->log('Job Order cancelled');
-
             DB::commit();
-
-            // Broadcast status change
-            if (class_exists('\App\Events\JobOrderStatusChanged')) {
-                event(new \App\Events\JobOrderStatusChanged($jobOrder, $oldStatus, $jobOrder->status));
-            }
 
             return back()->with('success', 'Job Order cancelled successfully.');
 
@@ -320,34 +224,30 @@ class JobOrderController extends Controller
         }
     }
 
-    /**
-     * Update job order status (from production dashboard)
-     */
     public function updateStatus(Request $request, JobOrder $jobOrder)
     {
         $this->authorize('update', $jobOrder);
 
         $validated = $request->validate([
-            'status' => 'required|in:pending,approved,in_progress,completed,cancelled'
+            'jo_status' => 'required|in:Pending,Approved,In Progress,JO Full,Cancelled'
         ]);
 
         try {
-            $oldStatus = $jobOrder->status;
-            $jobOrder->update(['status' => $validated['status']]);
+            $oldStatus = $jobOrder->jo_status;
+            $jobOrder->update(['jo_status' => $validated['jo_status']]);
 
-            activity()
-                ->performedOn($jobOrder)
-                ->causedBy(auth()->user())
-                ->withProperties(['status_changed' => ['from' => $oldStatus, 'to' => $validated['status']]])
-                ->log('Job Order status updated');
+            // When production is completed (JO Full), create/update finished goods with qty = 0
+            if ($validated['jo_status'] === 'JO Full') {
+                $this->createOrUpdateFinishedGoods($jobOrder);
+            }
 
             if (class_exists('\App\Events\JobOrderStatusChanged')) {
-                broadcast(new \App\Events\JobOrderStatusChanged($jobOrder, $oldStatus, $validated['status']))->toOthers();
+                broadcast(new \App\Events\JobOrderStatusChanged($jobOrder, $oldStatus, $validated['jo_status']))->toOthers();
             }
 
             return response()->json([
                 'success' => true,
-                'message' => "Job order status updated to {$validated['status']}",
+                'message' => "Job order status updated to {$validated['jo_status']}",
                 'data' => $jobOrder->fresh()
             ]);
         } catch (\Exception $e) {
@@ -355,14 +255,30 @@ class JobOrderController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update status'
+                'message' => 'Failed to update status: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Get job order details via AJAX
-     */
+    private function createOrUpdateFinishedGoods(JobOrder $jobOrder)
+    {
+        // Ensure finished goods are unique per product to avoid duplicates
+        \App\Models\FinishedGood::updateOrCreate(
+            ['product_id' => $jobOrder->product_id],
+            [
+                'job_order_id' => $jobOrder->id,
+                'product_code' => $jobOrder->product_code,
+                'customer_name' => $jobOrder->customer_name,
+                'model_name' => $jobOrder->model_name,
+                'description' => $jobOrder->description,
+                'uom' => $jobOrder->uom,
+                // Only set current_qty to 0 if not present
+                'current_qty' => \App\Models\FinishedGood::where('product_id', $jobOrder->product_id)->value('current_qty') ?? 0,
+                'encoded_by' => auth()->id(),
+            ]
+        );
+    }
+
     public function getDetails(JobOrder $jobOrder)
     {
         $this->authorize('view', $jobOrder);
@@ -371,5 +287,46 @@ class JobOrderController extends Controller
             'success' => true,
             'data' => $jobOrder->load('product')
         ]);
+    }
+
+    public function export()
+    {
+        $this->authorize('viewAny', JobOrder::class);
+
+        $data = JobOrder::with('product')->get();
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename=job_orders_' . now()->format('Y-m-d_His') . '.csv',
+        ];
+        
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            
+            fputcsv($file, ['JO Number', 'PO Number', 'Customer Name', 'Product Code', 'Model Name', 'Description', 'Quantity', 'UOM', 'Status', 'Date Needed', 'Date Encoded', 'Date Approved', 'Encoded By', 'Approved By']);
+            
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->jo_number ?? '',
+                    $row->po_number ?? '',
+                    $row->customer_name ?? '',
+                    $row->product_code ?? '',
+                    $row->model_name ?? '',
+                    $row->description ?? '',
+                    $row->quantity ?? 0,
+                    $row->uom ?? '',
+                    $row->jo_status ?? '',
+                    $row->date_needed?->format('Y-m-d') ?? '',
+                    $row->date_encoded?->format('Y-m-d H:i:s') ?? '',
+                    $row->date_approved?->format('Y-m-d H:i:s') ?? '',
+                    $row->encoded_by ?? '',
+                    $row->approved_by ?? '',
+                ]);
+            }
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

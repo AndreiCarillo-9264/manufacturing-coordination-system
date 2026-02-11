@@ -16,7 +16,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $query = User::query();
+        $query = User::withTrashed(); // Include deactivated (soft-deleted) users
 
         // Search
         if ($request->filled('search')) {
@@ -71,13 +71,6 @@ class UserController extends Controller
 
             $user = User::create($validated);
 
-            // Log activity
-            activity()
-                ->performedOn($user)
-                ->causedBy(auth()->user())
-                ->withProperties(['new' => $user->makeHidden(['password'])->toArray()])
-                ->log('User created');
-
             DB::commit();
 
             return redirect()
@@ -87,24 +80,13 @@ class UserController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('User creation failed: ' . $e->getMessage(), [
-                'admin_user_id' => auth()->id()
+                'user_id' => auth()->id()
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create user. Please try again.');
+                ->with('error', 'Failed to create user.');
         }
-    }
-
-    public function show(User $user)
-    {
-        $this->authorize('view', $user);
-
-        $user->load(['activityLogs' => function ($query) {
-            $query->latest()->limit(20);
-        }]);
-
-        return view('users.show', compact('user'));
     }
 
     public function edit(User $user)
@@ -118,52 +100,26 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
-        $rules = [
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user)],
+            'department' => 'required|in:admin,sales,production,inventory,logistics',
             'profile_picture' => 'nullable|image|max:2048',
-        ];
-
-        // Only admin can update these fields
-        if (auth()->user()->department === 'admin') {
-            $rules['username'] = ['required', 'string', 'max:255', Rule::unique('users')->ignore($user)];
-            $rules['department'] = 'required|in:admin,sales,production,inventory,logistics';
-            $rules['password'] = 'nullable|string|min:8|confirmed';
-        }
-
-        $validated = $request->validate($rules);
+        ]);
 
         try {
             DB::beginTransaction();
 
-            $oldData = $user->makeHidden(['password'])->toArray();
-
-            // Handle password update
-            if (!empty($validated['password'])) {
-                $validated['password'] = Hash::make($validated['password']);
-            } else {
-                unset($validated['password']);
-            }
-
-            // Handle profile picture upload
+            // Handle profile picture
             if ($request->hasFile('profile_picture')) {
-                // Delete old picture
                 if ($user->profile_picture) {
                     Storage::disk('public')->delete($user->profile_picture);
                 }
-
                 $validated['profile_picture'] = $request->file('profile_picture')
                     ->store('profile-pictures', 'public');
             }
 
             $user->update($validated);
-
-            // Log activity
-            activity()
-                ->performedOn($user)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $user->makeHidden(['password'])->toArray()])
-                ->log('User updated');
 
             DB::commit();
 
@@ -174,67 +130,118 @@ class UserController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('User update failed: ' . $e->getMessage(), [
-                'admin_user_id' => auth()->id(),
-                'user_id' => $user->id
+                'user_id' => auth()->id(),
+                'target_user_id' => $user->id
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update user. Please try again.');
+                ->with('error', 'Failed to update user.');
         }
     }
 
-    public function destroy(User $user)
+    public function activate(Request $request, $userId)
     {
-        $this->authorize('delete', $user);
-
-        // Prevent self-deletion
-        if ($user->id === auth()->id()) {
-            return back()->with('error', 'You cannot delete your own account.');
-        }
+        // Retrieve user including soft-deleted ones
+        $user = User::withTrashed()->findOrFail($userId);
+        $this->authorize('update', $user);
 
         try {
             DB::beginTransaction();
 
-            // Delete profile picture
-            if ($user->profile_picture) {
-                Storage::disk('public')->delete($user->profile_picture);
-            }
+            $user->restore(); // Restore soft-deleted user
+            $user->is_active = true;
+            $user->deactivated_by = null;
+            $user->deactivated_at = null;
+            $user->deactivation_remarks = null;
+            $user->save();
 
-            $oldData = $user->makeHidden(['password'])->toArray();
-            $user->delete();
+            DB::commit();
 
-            // Log activity
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData])
-                ->log('User deleted');
+            Log::info('User activated', [
+                'user_id' => auth()->id(),
+                'target_user_id' => $user->id
+            ]);
+
+            return redirect()
+                ->route('users.index')
+                ->with('success', 'User activated successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('User activation failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'target_user_id' => $userId
+            ]);
+
+            return back()->with('error', 'Failed to activate user.');
+        }
+    }
+
+    public function deactivate(Request $request, $userId)
+    {
+        // Retrieve user including soft-deleted ones
+        $user = User::withTrashed()->findOrFail($userId);
+        $this->authorize('delete', $user);
+
+        $validated = $request->validate([
+            'remarks' => 'nullable|string|max:1000'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Record deactivation metadata and soft-delete
+            $user->deactivation_remarks = $validated['remarks'] ?? null;
+            $user->deactivated_by = auth()->id();
+            $user->deactivated_at = now();
+            $user->is_active = false;
+            $user->save();
+
+            // Log enriched activity before deleting 
+            app(\App\Services\ActivityLogger::class)->logModel(
+                'deactivated',
+                $user,
+                $user->getOriginal(),
+                $user->getAttributes()
+            );
+
+            $user->delete(); // Soft-delete
 
             DB::commit();
 
             return redirect()
                 ->route('users.index')
-                ->with('success', 'User deleted successfully.');
+                ->with('success', 'User deactivated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('User deletion failed: ' . $e->getMessage(), [
-                'admin_user_id' => auth()->id(),
-                'user_id' => $user->id
+            Log::error('User deactivation failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'target_user_id' => $userId
             ]);
 
-            return back()->with('error', 'Failed to delete user. Please try again.');
+            return back()->with('error', 'Failed to deactivate user.');
         }
     }
 
-    public function profile()
+    public function search(Request $request)
     {
-        $user = auth()->user();
-        $user->load(['activityLogs' => function ($query) {
-            $query->latest()->limit(10);
-        }]);
+        $q = $request->q;
 
-        return view('users.profile', compact('user'));
+        $query = User::query();
+
+        if ($q) {
+            $query->where(function ($builder) use ($q) {
+                $builder->where('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%")
+                    ->orWhere('username', 'like', "%{$q}%");
+            });
+        }
+
+        $users = $query->orderBy('name')->limit(10)->get(['id', 'name', 'department']);
+
+        return response()->json(['success' => true, 'users' => $users]);
     }
 
     public function updateProfile(Request $request)

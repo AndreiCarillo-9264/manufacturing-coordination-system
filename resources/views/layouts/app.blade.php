@@ -7,6 +7,7 @@
     <title>@yield('title', 'Manufacturing ERP System')</title>
     @vite('resources/js/app.js')
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -56,53 +57,61 @@
                 <div class="pt-3 mt-1 space-y-1.5 border-t border-gray-200">
                     <p class="px-4 text-xs text-gray-500 uppercase mb-3 tracking-wider">Data Management</p>
 
-                    @can('viewAny', App\Models\Product::class)
+                    @if(auth()->user()->isAdmin() || auth()->user()->isSales())
                     <a href="{{ route('products.index') }}"
                        class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('products*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
                         <i class="fas fa-box w-5"></i>
                         <span class="ml-3">Product Masterlist</span>
                     </a>
-                    @endcan
+                    @endif
 
-                    @can('viewAny', App\Models\JobOrder::class)
+                    @if(auth()->user()->isAdmin() || auth()->user()->isSales() || auth()->user()->isProduction())
                     <a href="{{ route('job-orders.index') }}"
                        class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('job-orders*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
                         <i class="fas fa-clipboard-list w-5"></i>
                         <span class="ml-3">Job Orders</span>
                     </a>
-                    @endcan
+                    @endif
 
-                    @can('viewAny', App\Models\DeliverySchedule::class)
-                    <a href="{{ route('delivery-schedules.index') }}"
-                       class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('delivery-schedules*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
-                        <i class="fas fa-truck-loading w-5"></i>
-                        <span class="ml-3">Delivery Schedules</span>
-                    </a>
-                    @endcan
-
-                    @can('viewAny', App\Models\Transfer::class)
-                    <a href="{{ route('transfers.index') }}"
-                       class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('transfers*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
+                    @if(auth()->user()->isAdmin() || auth()->user()->isProduction())
+                    <a href="{{ route('inventory-transfers.index') }}"
+                       class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('inventory-transfers*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
                         <i class="fas fa-exchange-alt w-5"></i>
-                        <span class="ml-3">Transfers</span>
+                        <span class="ml-3">Inventory Transfers</span>
                     </a>
-                    @endcan
+                    @endif
 
-                    @can('viewAny', App\Models\FinishedGood::class)
+                    @if(auth()->user()->isAdmin() || auth()->user()->isInventory())
                     <a href="{{ route('finished-goods.index') }}"
                        class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('finished-goods*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
                         <i class="fas fa-check-square w-5"></i>
                         <span class="ml-3">Finished Goods</span>
                     </a>
-                    @endcan
+                    @endif
 
-                    @can('viewAny', App\Models\ActualInventory::class)
+                    @if(auth()->user()->isAdmin() || auth()->user()->isInventory())
                     <a href="{{ route('actual-inventories.index') }}"
                        class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('actual-inventories*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
-                        <i class="fas fa-clipboard-list w-5"></i>
+                        <i class="fas fa-boxes w-5"></i>
                         <span class="ml-3">Actual Inventory</span>
                     </a>
-                    @endcan
+                    @endif
+
+                    @if(auth()->user()->isAdmin() || auth()->user()->isLogistics() || auth()->user()->isSales())
+                    <a href="{{ route('delivery-schedules.index') }}"
+                       class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('delivery-schedules*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
+                        <i class="fas fa-truck-loading w-5"></i>
+                        <span class="ml-3">Delivery Schedules</span>
+                    </a>
+                    @endif
+
+                    @if(auth()->user()->isAdmin() || auth()->user()->isLogistics())
+                    <a href="{{ route('endorse-to-logistics.index') }}"
+                       class="flex items-center px-4 py-2.5 rounded-lg transition-colors text-gray-700 hover:bg-amber-50 hover:text-amber-800 {{ request()->routeIs('endorse-to-logistics*') ? 'bg-amber-800 text-white hover:bg-amber-900 hover:text-white font-medium' : '' }}">
+                        <i class="fas fa-shipping-fast w-5"></i>
+                        <span class="ml-3">Endorse To Logistics</span>
+                    </a>
+                    @endif
 
                     @if(auth()->user()->isAdmin())
                     <div class="pt-3 mt-1 space-y-1.5 border-t border-gray-200">
@@ -350,8 +359,7 @@
             }
         }
     </script>
-
-
+    <script src="{{ asset('js/ai-assistant-enhanced.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

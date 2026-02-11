@@ -25,7 +25,7 @@ class UpdateProductRequest extends FormRequest
             ],
             'model_name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'customer' => 'nullable|string|max:255',
+            'customer_name' => 'nullable|string|max:255',
             'specs' => 'nullable|string|max:2000',
             'dimension' => 'nullable|string|max:255',
             'location' => 'nullable|string|max:255',
@@ -52,5 +52,13 @@ class UpdateProductRequest extends FormRequest
             'selling_price.min' => 'Selling price cannot be negative.',
             'mc.min' => 'Material cost (MC) cannot be negative.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Map legacy/form field names to model columns before validation
+        if ($this->has('customer') && ! $this->has('customer_name')) {
+            $this->merge(['customer_name' => $this->input('customer')]);
+        }
     }
 }

@@ -23,14 +23,20 @@ trait LogsActivity
     protected function logActivity($event)
     {
         ActivityLog::create([
-            'model_type' => get_class($this),
-            'model_id' => $this->id,
-            'action' => $event,
+            'log_name' => class_basename(get_class($this)),
+            'description' => $event,
+            'subject_type' => get_class($this),
+            'subject_id' => $this->id,
+            'event' => $event,
             'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name ?? 'System',
+            'user_department' => auth()->user()?->department ?? null,
             'old_values' => $event === 'updated' ? $this->getOriginal() : null,
             'new_values' => $event !== 'deleted' ? $this->getAttributes() : null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
+            'method' => request()->method(),
+            'url' => request()->url(),
         ]);
     }
 }

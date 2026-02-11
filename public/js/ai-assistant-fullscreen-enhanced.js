@@ -184,7 +184,16 @@ class AIFullscreenAssistant {
     async sendMessage() {
         const input = document.getElementById('chat-input-full');
         const message = input.value.trim();
-        if (!message || !this.currentConversationId) return;
+        
+        console.log('[AI Assistant] Sending message:', message);
+        
+        if (!message || !this.currentConversationId) {
+            console.warn('[AI Assistant] Message validation failed', {
+                hasMessage: !!message,
+                hasConversationId: !!this.currentConversationId
+            });
+            return;
+        }
 
         // Remove empty state if present
         const emptyState = document.querySelector('.flex.items-center.justify-center.h-full');
@@ -197,6 +206,8 @@ class AIFullscreenAssistant {
         this.showTypingIndicator();
 
         try {
+            console.log('[AI Assistant] Fetching /ai-assistant/chat with conversation_id:', this.currentConversationId);
+            
             const response = await fetch('/ai-assistant/chat', {
                 method: 'POST',
                 headers: {
@@ -210,10 +221,15 @@ class AIFullscreenAssistant {
                 }),
             });
 
+            console.log('[AI Assistant] Response status:', response.status, response.statusText);
+
             const data = await response.json();
+            console.log('[AI Assistant] Response data:', data);
+            
             this.hideTypingIndicator();
 
             if (data.success) {
+                console.log('[AI Assistant] Response successful');
                 this.addMessage('ai', data.message);
                 
                 // Update conversation title if it's the first message
@@ -224,12 +240,17 @@ class AIFullscreenAssistant {
                     this.renderConversationList();
                 }
             } else {
+                console.warn('[AI Assistant] Response unsuccessful:', data);
                 this.addMessage('ai', data.message || 'Sorry, an error occurred. Please try again.');
             }
         } catch (error) {
-            console.error('Chat error:', error);
+            console.error('[AI Assistant] Fetch error:', error);
+            console.error('[AI Assistant] Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
             this.hideTypingIndicator();
-            this.addMessage('ai', 'Connection error. Please check your internet connection and try again.');
+            this.addMessage('ai', `Connection error: ${error.message}. Please check your internet connection.`);
         } finally {
             input.disabled = false;
             input.focus();
@@ -239,7 +260,7 @@ class AIFullscreenAssistant {
     addMessage(sender, text, timestamp = null) {
         const container = document.getElementById('chat-messages-full');
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'mb-4 chat-item';
+        messageDiv.className = 'space-y-4 animate-fade-in';
 
         const displayTime = timestamp 
             ? new Date(timestamp).toLocaleString('en-US', { 
@@ -253,18 +274,30 @@ class AIFullscreenAssistant {
 
         if (sender === 'user') {
             messageDiv.innerHTML = `
-                <div class="flex justify-end mb-2">
-                    <div class="max-w-[70%] p-4 rounded-lg bg-gray-900 text-white rounded-br-none shadow">
-                        <p class="text-sm whitespace-pre-wrap">${this.escapeHtml(text)}</p>
-                        <p class="text-xs text-gray-300 mt-2">${displayTime}</p>
+                <div class="flex justify-end">
+                    <div class="max-w-xl">
+                        <div class="rounded-2xl rounded-tr-sm bg-gradient-to-br from-amber-600 to-amber-700 p-4 text-white shadow-md hover:shadow-lg transition-shadow">
+                            <p class="text-sm leading-relaxed whitespace-pre-wrap">${this.escapeHtml(text)}</p>
+                        </div>
+                        <p class="mt-2 text-right text-xs text-gray-500">${displayTime}</p>
                     </div>
                 </div>
             `;
         } else {
             messageDiv.innerHTML = `
                 <div class="flex justify-start">
-                    <div class="max-w-[70%] p-4 rounded-lg bg-white border border-gray-200 rounded-bl-none shadow">
-                        <p class="text-sm text-gray-800 whitespace-pre-wrap">${this.escapeHtml(text)}</p>
+                    <div class="max-w-xl">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-700 shadow-sm">
+                                <i class="fas fa-robot text-xs text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="rounded-2xl rounded-tl-sm border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                                    <p class="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">${this.escapeHtml(text)}</p>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500">AI Assistant</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;

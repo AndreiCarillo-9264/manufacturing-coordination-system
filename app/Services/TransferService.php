@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Transfer;
+use App\Models\InventoryTransfer;
 use App\Models\JobOrder;
 use App\Models\FinishedGood;
 use Carbon\Carbon;
@@ -20,7 +20,7 @@ class TransferService
         return $qtyReceived >= $qtyTransferred ? 'complete' : 'balance';
     }
 
-    public function updateFinishedGoodsInventory(Transfer $transfer): void
+    public function updateFinishedGoodsInventory(InventoryTransfer $transfer): void
     {
         $finishedGood = $transfer->product->finishedGood;
 
@@ -37,7 +37,7 @@ class TransferService
         $finishedGood->calculateTheoreticalEnding();
     }
 
-    public function reverseFinishedGoodsInventory(Transfer $transfer): void
+    public function reverseFinishedGoodsInventory(InventoryTransfer $transfer): void
     {
         $finishedGood = $transfer->product->finishedGood;
 
@@ -73,7 +73,7 @@ class TransferService
         ?Carbon $dateFrom = null,
         ?Carbon $dateTo = null
     ): Collection {
-        $query = Transfer::with(['product', 'jobOrder'])
+        $query = InventoryTransfer::with(['product', 'jobOrder'])
             ->where('section', $section);
 
         if ($dateFrom) {
@@ -89,7 +89,7 @@ class TransferService
 
     public function getPerformanceMetrics(?Carbon $dateFrom = null, ?Carbon $dateTo = null): array
     {
-        $query = Transfer::query();
+        $query = InventoryTransfer::query();
 
         if ($dateFrom) {
             $query->where('date_transferred', '>=', $dateFrom);
@@ -114,7 +114,7 @@ class TransferService
         ];
     }
 
-    public function canDelete(Transfer $transfer): bool
+    public function canDelete(InventoryTransfer $transfer): bool
     {
         // Transfers can typically be deleted if they haven't been fully integrated
         // Add your business logic here
@@ -123,7 +123,7 @@ class TransferService
 
     public function getDailySummary(Carbon $date): array
     {
-        $transfers = Transfer::whereDate('date_transferred', $date)->get();
+        $transfers = InventoryTransfer::whereDate('date_transferred', $date)->get();
 
         return [
             'date' => $date->toDateString(),

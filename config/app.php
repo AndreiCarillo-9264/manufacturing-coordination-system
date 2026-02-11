@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Auto-Create ETL on Inventory Verification
+    |--------------------------------------------------------------------------
+    |
+    | When set to false, ETL records must be created manually via the UI.
+    | When set to true, ETL records are automatically created when inventory
+    | is verified. Set via env variable: AUTO_CREATE_ETL_ON_VERIFICATION
+    |
+    */
+
+    'auto_create_etl_on_verification' => (bool) env('AUTO_CREATE_ETL_ON_VERIFICATION', false),
+
 ];

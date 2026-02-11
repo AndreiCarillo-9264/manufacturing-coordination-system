@@ -5,10 +5,11 @@ if (! $product) {
 }
 $jo = \App\Models\JobOrder::create([
     'product_id' => $product->id,
-    'qty_ordered' => 20,
+    'quantity' => 20,
+    'encoded_by' => 1,
     'po_number' => 'PO-TEST-1',
     'date_needed' => now()->addDays(2)->format('Y-m-d'),
     'week_number' => (int) date('W'),
     'encoded_by_user_id' => 1,
 ]);
-echo "JO created: id={$jo->id}, qty_ordered={$jo->qty_ordered}, po={$jo->po_number}\n";
+echo "JO created: id={$jo->id}, quantity={$jo->quantity}, po={$jo->po_number}\n";

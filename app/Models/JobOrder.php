@@ -8,54 +8,90 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use App\Traits\AutoFillsFromProduct;
+use App\Traits\TracksUser;
+use App\Traits\LogsActivity;
 
 class JobOrder extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AutoFillsFromProduct, TracksUser, LogsActivity;
 
     protected $fillable = [
         'jo_number',
         'po_number',
-        'status',
-        'fulfillment_status',
+        'jo_status',
         'product_id',
-        'qty_ordered',
-        'qty_balance',
-        'qty_transferred_to_ppqc',
-        'qty_in_delivery_schedule',
+        
+        // Auto-filled from product
+        'product_code',
+        'customer_name',
+        'model_name',
+        'description',
+        'dimension',
+        'uom',
+        
+        // Job Order specific
+        'quantity',
+        'jo_balance',
+        'ppqc_transfer',
+        'ds_quantity',
         'withdrawal_status',
         'withdrawal_number',
         'week_number',
         'date_needed',
         'date_encoded',
         'date_approved',
-        'encoded_by_user_id',
         'remarks',
+        
+        // Audit fields
+        'encoded_by',
+        'approved_by',
+        'updated_by',
     ];
 
     protected $casts = [
         'date_needed' => 'date',
-        'date_encoded' => 'date',
-        'date_approved' => 'date',
-        'qty_ordered' => 'integer',
-        'qty_balance' => 'integer',
-        'qty_transferred_to_ppqc' => 'integer',
-        'qty_in_delivery_schedule' => 'integer',
-        'week_number' => 'integer',
+        'date_encoded' => 'datetime',
+        'date_approved' => 'datetime',
+        'deactivated_at' => 'datetime',
+        'quantity' => 'integer',
+        'jo_balance' => 'integer',
+        'ppqc_transfer' => 'integer',
+        'ds_quantity' => 'integer',
     ];
 
-    // Expose legacy attributes for backward compatibility: qty, uom
-    protected $appends = ['qty','uom'];
+    // Backward compatibility - expose old field names
+    protected $appends = ['qty', 'status'];
 
-    // Relationships
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn(string $eventName) => "Job Order {$this->jo_number} {$eventName}");
+    }
+
+    // ========== RELATIONSHIPS ==========
+    
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function encodedBy(): BelongsTo
+    public function encodedByUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'encoded_by_user_id');
+        return $this->belongsTo(User::class, 'encoded_by');
+    }
+
+    public function approvedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function updatedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function deliverySchedules(): HasMany
@@ -63,165 +99,200 @@ class JobOrder extends Model
         return $this->hasMany(DeliverySchedule::class);
     }
 
-    public function transfers(): HasMany
+    public function inventoryTransfers(): HasMany
     {
-        return $this->hasMany(Transfer::class);
+        return $this->hasMany(InventoryTransfer::class);
     }
 
-    // Scopes
+    // Legacy relationship name
+    public function transfers(): HasMany
+    {
+        return $this->inventoryTransfers();
+    }
+
+    // ========== SCOPES ==========
+    
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('jo_status', 'Pending');
     }
 
     public function scopeApproved($query)
     {
-        return $query->where('status', 'approved');
+        return $query->where('jo_status', 'Approved');
     }
 
-    public function scopeInProgress($query)
+    public function scopeJoFull($query)
     {
-        return $query->where('status', 'in_progress');
-    }
-
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
+        return $query->where('jo_status', 'JO Full');
     }
 
     public function scopeCancelled($query)
     {
-        return $query->where('status', 'cancelled');
+        return $query->where('jo_status', 'Cancelled');
     }
 
-    // Helper methods
-    public function approve(): void
+    public function scopeInProgress($query)
     {
-        $this->update([
-            'status' => 'approved',
-            'date_approved' => now(),
-        ]);
+        return $query->where('jo_status', 'In Progress');
     }
 
-    public function markInProgress(): void
+    public function scopeCompleted($query)
     {
-        $this->update(['status' => 'in_progress']);
+        return $query->where('jo_status', 'JO Full');
     }
 
-    public function complete(): void
+    // ========== HELPER METHODS ==========
+    
+    public function approve(int $approvedBy = null): void
     {
-        $this->update(['status' => 'completed']);
+        // Mark the approval
+        $this->date_approved = now();
+        $this->approved_by = $approvedBy ?? auth()->id();
+        
+        // Change status from Pending to Approved
+        if ($this->jo_status === 'Pending') {
+            $this->jo_status = 'Approved';
+        }
+        
+        $this->save();
+    }
+
+    public function markApproved(): void
+    {
+        $this->update(['jo_status' => 'Approved']);
+    }
+
+    public function markFull(): void
+    {
+        $this->update(['jo_status' => 'JO Full']);
     }
 
     public function cancel(): void
     {
-        $this->update(['status' => 'cancelled']);
+        $this->update(['jo_status' => 'Cancelled']);
     }
 
     public function calculateBalance(): void
     {
-        $this->qty_balance = $this->qty_ordered - (
-            ($this->qty_transferred_to_ppqc ?? 0) +
-            ($this->qty_in_delivery_schedule ?? 0)
+        $this->jo_balance = $this->quantity - (
+            ($this->ppqc_transfer ?? 0) +
+            ($this->ds_quantity ?? 0)
         );
         $this->save();
     }
 
-    // Backward-compatible aliases
+    public function updateStatus(): void
+    {
+        if ($this->jo_balance <= 0) {
+            $this->jo_status = 'JO Full';
+        } elseif ($this->ppqc_transfer > 0 || $this->ds_quantity > 0) {
+            $this->jo_status = 'Approved';
+        } else {
+            $this->jo_status = 'Pending';
+        }
+        $this->save();
+    }
+
+    // ========== BACKWARD COMPATIBILITY ACCESSORS ==========
+    
+    // Old: qty_ordered -> New: quantity
     public function getQtyAttribute()
     {
-        return $this->qty_ordered;
+        return $this->quantity;
     }
 
     public function setQtyAttribute($value): void
     {
-        $this->attributes['qty_ordered'] = $value;
+        $this->attributes['quantity'] = $value;
     }
 
-    public function getUomAttribute()
+    // Old: status -> New: jo_status
+    public function getStatusAttribute()
     {
-        return $this->product?->uom;
+        return $this->jo_status;
     }
 
-    public function setPoNumberAttribute($value): void
+    public function setStatusAttribute($value): void
     {
-        // Prevent accidentally setting PO to null/empty which would violate DB constraints
-        if ($value === null || $value === '') {
-            return;
-        }
-        $this->attributes['po_number'] = $value;
+        // Map old status values to new enum values
+        $statusMap = [
+            'pending' => 'Pending',
+            'approved' => 'Approved',
+            'in_progress' => 'In Progress',
+            'completed' => 'JO Full',
+            'cancelled' => 'Cancelled',
+        ];
+        
+        $this->attributes['jo_status'] = $statusMap[strtolower($value)] ?? $value;
     }
 
-    // Boot method
+    // Ensure backward compatibility for encodedBy relationship
+    public function encodedBy(): BelongsTo
+    {
+        return $this->encodedByUser();
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->approvedByUser();
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->updatedByUser();
+    }
+
+    // ========== BOOT METHOD ==========
+    
     protected static function booted(): void
     {
         static::creating(function (JobOrder $jobOrder) {
             // Auto-generate jo_number: JO-YYYY-NNNN
             if (empty($jobOrder->jo_number)) {
-                $year = Carbon::now()->year;
-
-                $lastJobOrder = static::where('jo_number', 'like', "JO-{$year}-%")
-                    ->orderBy('jo_number', 'desc')
-                    ->first();
-
-                $nextNumber = 1;
-                if ($lastJobOrder) {
-                    $parts = explode('-', $lastJobOrder->jo_number);
-                    $lastNumber = (int) end($parts);
-                    $nextNumber = $lastNumber + 1;
-                }
-
-                $jobOrder->jo_number = sprintf("JO-%d-%04d", $year, $nextNumber);
+                $jobOrder->jo_number = static::nextJoNumber();
             }
 
-            // Set date_encoded if not provided
-            if (empty($jobOrder->date_encoded)) {
-                $jobOrder->date_encoded = Carbon::today();
-            }
-
-            // Set encoded_by if not provided
-            if (empty($jobOrder->encoded_by_user_id) && auth()->check()) {
-                $jobOrder->encoded_by_user_id = auth()->id();
-            }
-
-            // Auto-generate po_number: PO-YYYY-MM-NNNN
+            // Auto-generate po_number if not provided
             if (empty($jobOrder->po_number)) {
-                $year = Carbon::now()->year;
-                $month = Carbon::now()->month;
-                $prefix = sprintf('PO-%d-%02d-', $year, $month);
-
-                $last = static::where('po_number', 'like', "{$prefix}%")
-                    ->orderBy('po_number', 'desc')
-                    ->first();
-
-                $nextNumber = 1;
-                if ($last) {
-                    $parts = explode('-', $last->po_number);
-                    $lastNumber = (int) end($parts);
-                    $nextNumber = $lastNumber + 1;
-                }
-
-                $jobOrder->po_number = sprintf("PO-%d-%02d-%04d", $year, $month, $nextNumber);
+                $jobOrder->po_number = static::nextPoNumber();
             }
 
-            // Ensure week_number is set from date_needed if not provided (robust for programmatic creation)
-            if (empty($jobOrder->week_number) && ! empty($jobOrder->date_needed)) {
-                $jobOrder->week_number = (int) date('W', strtotime($jobOrder->date_needed));
+            // Set initial jo_balance
+            if (!isset($jobOrder->jo_balance)) {
+                $jobOrder->jo_balance = $jobOrder->quantity;
+            }
+
+            // Calculate week_number from date_needed
+            if ($jobOrder->date_needed && empty($jobOrder->week_number)) {
+                $jobOrder->week_number = (string) Carbon::parse($jobOrder->date_needed)->format('W');
+            }
+        });
+
+        static::updating(function (JobOrder $jobOrder) {
+            // Recalculate week_number if date_needed changes
+            if ($jobOrder->isDirty('date_needed') && $jobOrder->date_needed) {
+                $jobOrder->week_number = (string) Carbon::parse($jobOrder->date_needed)->format('W');
             }
         });
     }
 
-    // Sequence helpers (suggest next identifiers without creating records)
+    // ========== CODE GENERATION HELPERS ==========
+    
     public static function nextJoNumber(): string
     {
         $year = Carbon::now()->year;
-        $last = static::where('jo_number', 'like', "JO-{$year}-%")->orderBy('jo_number', 'desc')->first();
+        $last = static::where('jo_number', 'like', "JO-{$year}-%")
+            ->orderBy('jo_number', 'desc')
+            ->first();
+        
         $nextNumber = 1;
         if ($last) {
             $parts = explode('-', $last->jo_number);
             $lastNumber = (int) end($parts);
             $nextNumber = $lastNumber + 1;
         }
+        
         return sprintf('JO-%d-%04d', $year, $nextNumber);
     }
 
@@ -232,7 +303,10 @@ class JobOrder extends Model
         $month = $dt->month;
         $prefix = sprintf('PO-%d-%02d-', $year, $month);
 
-        $last = static::where('po_number', 'like', "{$prefix}%")->orderBy('po_number', 'desc')->first();
+        $last = static::where('po_number', 'like', "{$prefix}%")
+            ->orderBy('po_number', 'desc')
+            ->first();
+        
         $nextNumber = 1;
         if ($last) {
             $parts = explode('-', $last->po_number);
@@ -242,4 +316,31 @@ class JobOrder extends Model
 
         return sprintf('PO-%d-%02d-%04d', $year, $month, $nextNumber);
     }
+
+    // ========== COMPUTED ATTRIBUTES ==========
+    
+    public function getFulfillmentPercentageAttribute(): float
+    {
+        if ($this->quantity <= 0) {
+            return 0;
+        }
+        
+        $fulfilled = $this->ppqc_transfer + $this->ds_quantity;
+        return ($fulfilled / $this->quantity) * 100;
+    }
+
+    public function getRemainingQuantityAttribute(): int
+    {
+        return max(0, $this->jo_balance);
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        if (!$this->date_needed) {
+            return false;
+        }
+
+        return $this->date_needed->isPast() && $this->jo_status !== 'JO Full';
+    }
+
 }

@@ -30,6 +30,14 @@ class FinishedGoodController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
+        // Filter by date range (use last_in_date)
+        if ($request->filled('date_from')) {
+            $query->where('last_in_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->where('last_in_date', '<=', $request->date_to);
+        }
+
         // Filter low stock items
         if ($request->has('low_stock')) {
             $query->lowStock();
@@ -43,10 +51,10 @@ class FinishedGoodController extends Controller
         $finishedGoods = $query->latest()->paginate(15);
 
         // Calculate totals
-        $totalStock = FinishedGood::sum('qty_actual_ending');
-        $totalValue = FinishedGood::sum('amount_ending');
+        $totalStock = FinishedGood::sum('current_qty');
+        $totalValue = FinishedGood::sum('end_amount');
         $lowStockCount = FinishedGood::lowStock()->count();
-        $totalVariance = FinishedGood::sum('qty_variance');
+        $totalVariance = FinishedGood::sum('variance_qty');
 
         // Products for filter dropdown
         $products = Product::select('id', 'product_code', 'model_name')
@@ -63,15 +71,6 @@ class FinishedGoodController extends Controller
         ));
     }
 
-    public function show(FinishedGood $finishedGood)
-    {
-        $this->authorize('view', $finishedGood);
-
-        $finishedGood->load('product');
-
-        return view('finished-goods.show', compact('finishedGood'));
-    }
-
     public function edit(FinishedGood $finishedGood)
     {
         $this->authorize('update', $finishedGood);
@@ -84,10 +83,9 @@ class FinishedGoodController extends Controller
         $this->authorize('update', $finishedGood);
 
         $validated = $request->validate([
-            'qty_actual_ending' => 'required|integer|min:0',
-            'qty_buffer_stock' => 'required|integer|min:0',
-            'qty_pc_area' => 'nullable|integer|min:0',
-            'remarks' => 'nullable|string',
+            'current_qty' => 'required|integer|min:0',
+            'end_amount' => 'required|numeric|min:0',
+            'remarks' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -95,17 +93,6 @@ class FinishedGoodController extends Controller
 
             $oldData = $finishedGood->toArray();
             $finishedGood->update($validated);
-
-            // Recalculate variance
-            $finishedGood->calculateVariance();
-            $finishedGood->calculateAmountVariance();
-
-            // Log activity
-            activity()
-                ->performedOn($finishedGood)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $finishedGood->toArray()])
-                ->log('Finished Good updated');
 
             DB::commit();
 
@@ -156,10 +143,6 @@ class FinishedGoodController extends Controller
                 $finishedGood->updateAgingRanges();
             }
 
-            activity()
-                ->causedBy(auth()->user())
-                ->log('Bulk aging update performed');
-
             return back()->with('success', 'All aging ranges updated successfully.');
 
         } catch (\Exception $e) {
@@ -169,5 +152,41 @@ class FinishedGoodController extends Controller
 
             return back()->with('error', 'Failed to update aging ranges.');
         }
+    }
+
+    public function export()
+    {
+        $this->authorize('viewAny', FinishedGood::class);
+
+        $data = FinishedGood::with('product')->get();
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename=finished_goods_' . now()->format('Y-m-d_His') . '.csv',
+        ];
+        
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            
+            fputcsv($file, ['Product Code', 'Model Name', 'Current Qty', 'UOM', 'Buffer Stocks', 'Selling Price', 'Currency', 'Aging Range', 'Created At']);
+            
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->product_code ?? '',
+                    $row->model_name ?? '',
+                    $row->current_qty ?? 0,
+                    $row->uom ?? '',
+                    $row->buffer_stocks ?? 0,
+                    $row->selling_price ?? 0,
+                    $row->currency ?? '',
+                    $row->aging_range ?? '',
+                    $row->created_at?->format('Y-m-d H:i:s') ?? '',
+                ]);
+            }
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

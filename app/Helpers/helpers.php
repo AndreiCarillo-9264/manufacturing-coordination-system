@@ -41,27 +41,50 @@ if (!function_exists('activity')) {
             public function log(string $action)
             {
                 ActivityLog::create([
-                    'model_type' => $this->model ? get_class($this->model) : null,
-                    'model_id' => $this->model ? $this->model->id : null,
-                    'action' => $action,
+                    'log_name' => $this->model ? class_basename(get_class($this->model)) : 'system',
+                    'description' => $action,
+                    'subject_type' => $this->model ? get_class($this->model) : null,
+                    'subject_id' => $this->model ? $this->model->id : null,
+                    'event' => $action,
                     'user_id' => $this->causer ? $this->causer->id : auth()->id(),
+                    'user_name' => $this->causer?->name ?? auth()->user()?->name ?? 'System',
+                    'user_department' => $this->causer?->department ?? auth()->user()?->department ?? null,
                     'old_values' => $this->properties['old'] ?? null,
                     'new_values' => $this->properties['new'] ?? $this->properties,
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
+                    'method' => request()->method(),
+                    'url' => request()->url(),
                 ]);
             }
         };
     }
 }
 
+if (!function_exists('currencySymbol')) {
+    /**
+     * Map currency code to a currency symbol. Falls back to code + space for unknown codes.
+     */
+    function currencySymbol($currency)
+    {
+        $c = strtoupper($currency ?? 'PHP');
+        return match($c) {
+            'PHP' => '₱',
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            default => $c . ' ',
+        };
+    }
+}
+
 if (!function_exists('formatCurrency')) {
     /**
-     * Format number as currency
+     * Format number as currency (keeps backward compatibility: returns symbol + formatted number for known currencies)
      */
     function formatCurrency($amount, $currency = 'PHP')
     {
-        return $currency . ' ' . number_format($amount, 2);
+        return currencySymbol($currency) . number_format($amount, 2);
     }
 }
 
@@ -123,3 +146,24 @@ if (!function_exists('calculatePercentage')) {
         return round(($part / $total) * 100, $decimals);
     }
 }
+
+    if (!function_exists('getStatusDotClass')) {
+        /**
+         * Get small dot color class for a status label
+         */
+        function getStatusDotClass($status)
+        {
+            return match($status) {
+                'pending' => 'bg-yellow-400',
+                'approved' => 'bg-blue-400',
+                'in_progress' => 'bg-indigo-400',
+                'completed', 'delivered' => 'bg-green-400',
+                'cancelled' => 'bg-red-400',
+                'urgent' => 'bg-orange-400',
+                'backlog' => 'bg-purple-400',
+                'balance' => 'bg-yellow-400',
+                'complete' => 'bg-green-400',
+                default => 'bg-gray-400',
+            };
+        }
+    }

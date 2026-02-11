@@ -49,17 +49,23 @@ class ActivityLogger
         $user ??= Auth::user();
 
         $data = [
-            'action' => $action,
+            'event' => $action,
+            'description' => $action,
+            'log_name' => $model ? class_basename(get_class($model)) : 'system',
             'user_id' => $user?->id,
+            'user_name' => $user?->name ?? 'System',
+            'user_department' => $user?->department ?? null,
             'ip_address' => $extra['ip'] ?? Request::ip(),
             'user_agent' => $extra['user_agent'] ?? Request::userAgent(),
             'old_values' => $oldValues,
             'new_values' => $newValues,
+            'method' => Request::method(),
+            'url' => Request::url(),
         ];
 
         if ($model) {
-            $data['model_type'] = get_class($model);
-            $data['model_id'] = $model->getKey();
+            $data['subject_type'] = get_class($model);
+            $data['subject_id'] = $model->getKey();
         }
 
         return ActivityLog::create($data);

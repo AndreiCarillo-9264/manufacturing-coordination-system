@@ -26,8 +26,8 @@ class JobOrderPolicy
 
     public function update(User $user, JobOrder $jobOrder): bool
     {
-        // Admin and Sales can update
-        return $user->isAdmin() || $user->isSales();
+        // Admin, Sales and Production can update (production can change status)
+        return $user->isAdmin() || $user->isSales() || $user->isProduction();
     }
 
     public function delete(User $user, JobOrder $jobOrder): bool
@@ -42,8 +42,8 @@ class JobOrderPolicy
     public function approve(User $user, JobOrder $jobOrder): bool
     {
         // Admin, Sales, and Inventory can approve
-        // And only if status is pending
-        return ($user->isAdmin() || $user->isSales() || $user->isInventory()) && $jobOrder->status === 'pending';
+        // And only if status is Pending (capitalized)
+        return ($user->isAdmin() || $user->isSales() || $user->isInventory()) && $jobOrder->jo_status === 'Pending';
     }
 
     /**
@@ -51,8 +51,8 @@ class JobOrderPolicy
      */
     public function cancel(User $user, JobOrder $jobOrder): bool
     {
-        return ($user->isAdmin() || $user->isSales()) && 
-               in_array($jobOrder->status, ['pending', 'approved']);
+        // Only allow cancellation of Pending status (not Partial, JO Full, or Cancelled)
+        return ($user->isAdmin() || $user->isSales()) && $jobOrder->jo_status === 'Pending';
     }
 
     public function restore(User $user, JobOrder $jobOrder): bool

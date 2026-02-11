@@ -20,10 +20,22 @@ class PendingJobOrderNotification extends Notification
 
     public function via(object $notifiable)
     {
-        return ['database'];
+        // Store in database and broadcast so clients listening via Echo receive real-time notifications
+        return ['database', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable)
+    {
+        return $this->payload();
+    }
+
+    public function toArray(object $notifiable)
+    {
+        // Array representation used by broadcast channel
+        return $this->payload();
+    }
+
+    private function payload(): array
     {
         return [
             'type' => 'pending_job_order',
@@ -34,7 +46,7 @@ class PendingJobOrderNotification extends Notification
             'uom' => $this->jobOrder->uom,
             'date_needed' => $this->jobOrder->date_needed?->format('Y-m-d'),
             'message' => "New pending Job Order: {$this->jobOrder->jo_number} - {$this->jobOrder->product?->model_name} ({$this->jobOrder->qty} {$this->jobOrder->uom})",
-            'url' => route('job-orders.show', $this->jobOrder->id),
+            'url' => route('job-orders.index'),
         ];
     }
 }

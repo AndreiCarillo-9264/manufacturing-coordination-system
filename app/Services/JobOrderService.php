@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\JobOrder;
-use App\Models\Transfer;
+use App\Models\InventoryTransfer;
 use App\Models\DeliverySchedule;
 use Illuminate\Support\Collection;
 
@@ -12,7 +12,7 @@ class JobOrderService
     public function updateBalance(JobOrder $jobOrder): void
     {
         // Calculate total from transfers
-        $totalTransferred = Transfer::where('job_order_id', $jobOrder->id)
+        $totalTransferred = InventoryTransfer::where('job_order_id', $jobOrder->id)
             ->sum('qty_received');
 
         // Calculate total from delivery schedules

@@ -20,16 +20,17 @@ class UpdateActualInventoryRequest extends FormRequest
             'tag_number' => [
                 'required',
                 'string',
-                Rule::unique('actual_inventories', 'tag_number')->ignore($actualInventoryId),
+                Rule::unique('actual_inventory', 'tag_number')->ignore($actualInventoryId),
                 'max:255'
             ],
             'product_id' => 'required|exists:products,id',
-            'qty_counted' => 'required|integer|min:0',
+            'fg_quantity' => 'required|integer|min:0',
             'location' => 'nullable|string|max:255',
-            'counted_by_user_id' => 'nullable|exists:users,id',
-            'verified_by_user_id' => 'nullable|exists:users,id',
-            'counted_at' => 'nullable|datetime',
-            'verified_at' => 'nullable|datetime',
+            'counted_by' => 'nullable|string|max:255',
+            'verified_by' => 'nullable|string|max:255',
+            'counted_at' => 'nullable|date',
+            'verified_at' => 'nullable|date',
+            'status' => 'nullable|in:Pending,Counted,Verified,Discrepancy',
             'remarks' => 'nullable|string',
         ];
     }
@@ -41,8 +42,8 @@ class UpdateActualInventoryRequest extends FormRequest
             'tag_number.unique' => 'This tag number has already been used.',
             'product_id.required' => 'Please select a product.',
             'product_id.exists' => 'The selected product does not exist.',
-            'qty_counted.required' => 'The quantity counted field is required.',
-            'qty_counted.min' => 'Quantity counted cannot be negative.',
+            'fg_quantity.required' => 'The quantity counted field is required.',
+            'fg_quantity.min' => 'Quantity counted cannot be negative.',
         ];
     }
 

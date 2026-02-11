@@ -1,154 +1,297 @@
+<!-- resources/views/actual-inventories/edit.blade.php -->
 @extends('layouts.app')
 
-@section('title', 'Edit Inventory')
+@section('title', 'Edit Actual Inventory')
 @section('page-icon') <i class="fas fa-edit"></i> @endsection
-@section('page-title', 'Edit Inventory Record')
-@section('page-description', 'Update stock count')
+@section('page-title', 'Edit Inventory Count: ' . $actualInventory->tag_number)
+@section('page-description', 'Update inventory count information')
 
 @section('content')
-<div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden max-w-4xl mx-auto">
-    <div class="p-6 border-b bg-gray-50">
-        <h3 class="text-lg font-semibold text-gray-800">Edit Inventory Record</h3>
-        <p class="text-sm text-gray-600 mt-1">Update the inventory details below.</p>
+<x-resource-form 
+    :action="route('actual-inventories.update', $actualInventory)" 
+    method="PUT" 
+    title="Edit Inventory Count" 
+    description="Update the inventory details below. Fields marked with * are required." 
+    :cancel="route('actual-inventories.index')" 
+    submit="Update Inventory">
+    
+    <x-slot name="headerRight">
+        <div class="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded">
+            {{ $actualInventory->tag_number }}
+        </div>
+    </x-slot>
+
+    {{-- SYSTEM INFO --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
+        <div>
+            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Tag Number
+            </label>
+            <div class="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900">
+                {{ $actualInventory->tag_number }}
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Date Encoded
+            </label>
+            <div class="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900">
+                {{ $actualInventory->date_encoded?->format('M d, Y') ?? '—' }}
+            </div>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Encoded By
+            </label>
+            <div class="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900">
+                {{ $actualInventory->encodedByUser?->name ?? 'System' }}
+            </div>
+        </div>
     </div>
 
-    <form action="{{ route('actual-inventories.update', $actualInventory) }}" method="POST" class="p-6 space-y-8">
-        @csrf
-        @method('PUT')
+    {{-- PRODUCT SELECTION --}}
+    <div class="mt-6">
+        <label for="product_id" class="block text-sm font-semibold text-gray-700 mb-2">
+            Product <span class="text-red-500">*</span>
+        </label>
+        <select id="product_id" name="product_id" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('product_id') border-red-500 ring-2 ring-red-200 @enderror">
+            <option value="">Search and select product...</option>
+            @foreach($products as $product)
+            <option value="{{ $product->id }}" {{ old('product_id', $actualInventory->product_id) == $product->id ? 'selected' : '' }}>{{ $product->product_code }} - {{ $product->model_name }}</option>
+            @endforeach
+        </select>
+        @error('product_id') 
+        <p class="mt-2 text-sm text-red-600 flex items-center">
+            <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+        </p> 
+        @enderror
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Tag Number -->
-            <div>
-                <label for="tag_number" class="block text-sm font-medium text-gray-700 mb-1.5">Tag Number</label>
-                <input type="text" id="tag_number" name="tag_number" value="{{ old('tag_number', $actualInventory->tag_number) }}"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('tag_number') border-red-500 @enderror">
-                @error('tag_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-                <div id="tag_number_suggestion" class="mt-2 text-sm text-gray-500 hidden">
-                    Suggested: <span id="tag_number_suggestion_text" class="font-mono text-gray-700"></span>
-                    <button type="button" id="tag_number_use_suggestion" class="ml-3 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">Use suggestion</button>
-                    <button type="button" id="tag_number_regenerate" class="ml-2 px-2 py-1 bg-gray-50 rounded text-xs">Regenerate</button>
-                </div>
-            </div>
-
-            <!-- Product (Read-only) -->
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
-                <input type="text" value="{{ $actualInventory->product->product_code }} — {{ $actualInventory->product->model_name }} ({{ $actualInventory->product->customer ?? 'N/A' }})" 
-                       readonly class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
-            </div>
-
-            <!-- Counted Quantity -->
-            <div>
-                <label for="qty_counted" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity *</label>
-                <input type="number" id="qty_counted" name="qty_counted" value="{{ old('qty_counted', $actualInventory->qty_counted) }}" 
-                       min="0" step="1" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_counted') border-red-500 @enderror">
-                @error('qty_counted') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- UOM (Read-only) -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">UOM (Unit of Measure)</label>
-                <input type="text" value="{{ $actualInventory->product->uom ?? '—' }}" 
-                       readonly class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
-            </div>
-
-            <!-- Location -->
-            <div>
-                <label for="location" class="block text-sm font-medium text-gray-700 mb-1.5">Location *</label>
-                <input type="text" id="location" name="location" value="{{ old('location', $actualInventory->location) }}" 
-                       required
-                       placeholder="Warehouse location, shelf, bin, etc."
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('location') border-red-500 @enderror">
-                @error('location') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Counted By -->
-            <div>
-                <label for="counted_by_user_id" class="block text-sm font-medium text-gray-700 mb-1.5">Counted By *</label>
-                <select id="counted_by_user_id" name="counted_by_user_id" required
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('counted_by_user_id') border-red-500 @enderror">
-                    <option value="">— Select User —</option>
-                    @foreach($users as $user)
-                    <option value="{{ $user->id }}" {{ old('counted_by_user_id', $actualInventory->counted_by_user_id) == $user->id ? 'selected' : '' }}>
-                        {{ $user->name }}
-                    </option>
-                    @endforeach
-                </select>
-                @error('counted_by_user_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Verified By (Optional) -->
-            <div>
-                <label for="verified_by_user_id" class="block text-sm font-medium text-gray-700 mb-1.5">Verified By</label>
-                <select id="verified_by_user_id" name="verified_by_user_id"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('verified_by_user_id') border-red-500 @enderror">
-                    <option value="">— None —</option>
-                    @foreach($users as $user)
-                    <option value="{{ $user->id }}" {{ old('verified_by_user_id', $actualInventory->verified_by_user_id) == $user->id ? 'selected' : '' }}>
-                        {{ $user->name }}
-                    </option>
-                    @endforeach
-                </select>
-                @error('verified_by_user_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Remarks -->
-            <div class="md:col-span-2">
-                <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks</label>
-                <textarea id="remarks" name="remarks" rows="3" placeholder="Additional notes..."
-                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('remarks') border-red-500 @enderror">{{ old('remarks', $actualInventory->remarks) }}</textarea>
-                @error('remarks') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+    {{-- AUTO-FILLED FIELDS --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {{-- PRODUCT CODE --}}
+        <div>
+            <label for="product_code" class="block text-sm font-semibold text-gray-700 mb-2">
+                Product Code
+            </label>
+            <input type="text" id="product_code" name="product_code" value="{{ old('product_code', $actualInventory->product_code) }}" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed">
         </div>
 
-        <!-- Buttons -->
-        <div class="flex justify-end gap-3 pt-4 border-t">
-            <a href="{{ route('actual-inventories.index') }}" 
-               class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-                Cancel
-            </a>
-            <button type="submit" 
-                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
-                <i class="fas fa-save"></i> Update Record
-            </button>
+        {{-- CUSTOMER NAME --}}
+        <div>
+            <label for="customer_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                Customer Name
+            </label>
+            <input type="text" id="customer_name" name="customer_name" value="{{ old('customer_name', $actualInventory->customer_name) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('customer_name') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('customer_name') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
         </div>
-    </form>
-</div>
 
+        {{-- MODEL NAME --}}
+        <div>
+            <label for="model_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                Model Name
+            </label>
+            <input type="text" id="model_name" name="model_name" value="{{ old('model_name', $actualInventory->model_name) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('model_name') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('model_name') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- DESCRIPTION --}}
+        <div>
+            <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
+                Description
+            </label>
+            <input type="text" id="description" name="description" value="{{ old('description', $actualInventory->description) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('description') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('description') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- DIMENSION --}}
+        <div>
+            <label for="dimension" class="block text-sm font-semibold text-gray-700 mb-2">
+                Dimension
+            </label>
+            <input type="text" id="dimension" name="dimension" value="{{ old('dimension', $actualInventory->dimension) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('dimension') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('dimension') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- UOM --}}
+        <div>
+            <label for="uom" class="block text-sm font-semibold text-gray-700 mb-2">
+                UOM
+            </label>
+            <input type="text" id="uom" name="uom" value="{{ old('uom', $actualInventory->uom) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('uom') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('uom') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+    </div>
+
+    {{-- MAIN FORM FIELDS --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {{-- FG QUANTITY --}}
+        <div>
+            <label for="fg_quantity" class="block text-sm font-semibold text-gray-700 mb-2">
+                FG Quantity <span class="text-red-500">*</span>
+            </label>
+            <input type="number" id="fg_quantity" name="fg_quantity" value="{{ old('fg_quantity', $actualInventory->fg_quantity) }}" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('fg_quantity') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('fg_quantity') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- LOCATION --}}
+        <div>
+            <label for="location" class="block text-sm font-semibold text-gray-700 mb-2">
+                Location
+            </label>
+            <input type="text" id="location" name="location" value="{{ old('location', $actualInventory->location) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('location') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('location') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- COUNTED BY --}}
+        <div>
+            <label for="counted_by" class="block text-sm font-semibold text-gray-700 mb-2">
+                Counted By
+            </label>
+            <input type="text" id="counted_by" name="counted_by" value="{{ old('counted_by', $actualInventory->counted_by) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('counted_by') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('counted_by') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- COUNTED AT --}}
+        <div>
+            <label for="counted_at" class="block text-sm font-semibold text-gray-700 mb-2">
+                Counted At
+            </label>
+            <input type="date" id="counted_at" name="counted_at" value="{{ old('counted_at', $actualInventory->counted_at?->format('Y-m-d')) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('counted_at') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('counted_at') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- VERIFIED BY --}}
+        <div>
+            <label for="verified_by" class="block text-sm font-semibold text-gray-700 mb-2">
+                Verified By
+            </label>
+            <input type="text" id="verified_by" name="verified_by" value="{{ old('verified_by', $actualInventory->verified_by) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('verified_by') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('verified_by') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- VERIFIED AT --}}
+        <div>
+            <label for="verified_at" class="block text-sm font-semibold text-gray-700 mb-2">
+                Verified At
+            </label>
+            <input type="date" id="verified_at" name="verified_at" value="{{ old('verified_at', $actualInventory->verified_at?->format('Y-m-d')) }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('verified_at') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('verified_at') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- STATUS --}}
+        <div>
+            <label for="status" class="block text-sm font-semibold text-gray-700 mb-2">
+                Status
+            </label>
+            <select id="status" name="status" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('status') border-red-500 ring-2 ring-red-200 @enderror">
+                <option value="Pending" {{ old('status', $actualInventory->status) == 'Pending' ? 'selected' : '' }}>Pending</option>
+                <option value="Counted" {{ old('status', $actualInventory->status) == 'Counted' ? 'selected' : '' }}>Counted</option>
+                <option value="Verified" {{ old('status', $actualInventory->status) == 'Verified' ? 'selected' : '' }}>Verified</option>
+                <option value="Discrepancy" {{ old('status', $actualInventory->status) == 'Discrepancy' ? 'selected' : '' }}>Discrepancy</option>
+            </select>
+            @error('status') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+
+        {{-- REMARKS --}}
+        <div class="md:col-span-2">
+            <label for="remarks" class="block text-sm font-semibold text-gray-700 mb-2">
+                Remarks
+            </label>
+            <textarea id="remarks" name="remarks" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('remarks') border-red-500 ring-2 ring-red-200 @enderror">{{ old('remarks', $actualInventory->remarks) }}</textarea>
+            @error('remarks') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+    </div>
+</x-resource-form>
+@endsection
+
+@section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const input = document.getElementById('tag_number');
-    const suggestionContainer = document.getElementById('tag_number_suggestion');
-    const suggestionText = document.getElementById('tag_number_suggestion_text');
-    const useBtn = document.getElementById('tag_number_use_suggestion');
-    const regenBtn = document.getElementById('tag_number_regenerate');
-
-    async function fetchSuggestion() {
-        try {
-            const resp = await fetch('/api/sequences/next?type=tag');
-            if (!resp.ok) return;
-            const data = await resp.json();
-            if (data.tag_number) {
-                suggestionText.textContent = data.tag_number;
-                suggestionContainer.classList.remove('hidden');
-                useBtn.disabled = false;
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    useBtn.addEventListener('click', function() {
-        const txt = suggestionText.textContent;
-        if (txt) {
-            input.value = txt;
-            suggestionContainer.classList.add('hidden');
-        }
+    // Initialize Select2 for searchable dropdown
+    $('#product_id').select2({
+        placeholder: 'Search product code...',
+        allowClear: true
     });
 
-    regenBtn.addEventListener('click', function() { fetchSuggestion(); });
+    // Preload products data
+    const products = @json($products);
 
-    fetchSuggestion();
+    // Auto-fill fields on product selection
+    $('#product_id').on('change', function() {
+        const productId = $(this).val();
+        if (productId) {
+            const selected = products.find(p => p.id == productId);
+            if (selected) {
+                $('#product_code').val(selected.product_code);
+                $('#customer_name').val(selected.customer_name);
+                $('#model_name').val(selected.model_name);
+                $('#description').val(selected.description);
+                $('#dimension').val(selected.dimension);
+                $('#uom').val(selected.uom);
+            }
+        } else {
+            // Clear fields if no product selected
+            $('#product_code').val('');
+            $('#customer_name').val('');
+            $('#model_name').val('');
+            $('#description').val('');
+            $('#dimension').val('');
+            $('#uom').val('');
+        }
+    });
 });
 </script>
-
 @endsection

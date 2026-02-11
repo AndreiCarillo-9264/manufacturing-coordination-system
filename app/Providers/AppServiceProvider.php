@@ -9,7 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use App\Models\Product;
 use App\Models\JobOrder;
-use App\Models\Transfer;
+use App\Models\InventoryTransfer;
 use App\Observers\ModelObserver;
 use App\Services\ActivityLogger;
 
@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
 
         Product::observe(ModelObserver::class);
         JobOrder::observe(ModelObserver::class);
-        Transfer::observe(ModelObserver::class);
+        InventoryTransfer::observe(ModelObserver::class);
     }
 
     protected function configureDefaults(): void

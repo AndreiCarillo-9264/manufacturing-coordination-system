@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Transfer;
 use App\Models\DeliverySchedule;
 use App\Models\ActualInventory;
+use App\Models\EndorseToLogistic;
 
 class SequenceController extends Controller
 {
@@ -37,6 +38,10 @@ class SequenceController extends Controller
 
         if ($type === 'tag' || $type === 'all') {
             $data['tag_number'] = ActualInventory::nextTagNumber();
+        }
+
+        if ($type === 'etl' || $type === 'all') {
+            $data['etl_delivery_code'] = EndorseToLogistic::nextEtlDeliveryCode();
         }
 
         return response()->json($data);

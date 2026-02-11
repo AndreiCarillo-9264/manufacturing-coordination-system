@@ -19,12 +19,12 @@ class ActivityLogController extends Controller
 
         // Filter by model type
         if ($request->filled('model_type')) {
-            $query->where('model_type', $request->model_type);
+            $query->where('subject_type', $request->model_type);
         }
 
         // Filter by action
         if ($request->filled('action')) {
-            $query->where('action', $request->action);
+            $query->where('event', $request->action);
         }
 
         // Filter by date range
@@ -35,13 +35,13 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $activityLogs = $query->paginate(20);
+        $activityLogs = $query->paginate(25);
 
         // Get unique model types for filter
-        $modelTypes = ActivityLog::select('model_type')
+        $modelTypes = ActivityLog::select('subject_type')
             ->distinct()
-            ->whereNotNull('model_type')
-            ->pluck('model_type')
+            ->whereNotNull('subject_type')
+            ->pluck('subject_type')
             ->map(function ($type) {
                 return [
                     'value' => $type,
@@ -50,9 +50,9 @@ class ActivityLogController extends Controller
             });
 
         // Get unique actions for filter
-        $actions = ActivityLog::select('action')
+        $actions = ActivityLog::select('event')
             ->distinct()
-            ->pluck('action');
+            ->pluck('event');
 
         // Get users for filter
         $users = User::orderBy('name')->get();
@@ -78,10 +78,6 @@ class ActivityLogController extends Controller
             $date = now()->subDays($validated['days']);
             $count = ActivityLog::where('created_at', '<', $date)->delete();
 
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['days' => $validated['days'], 'count' => $count])
-                ->log('Activity logs cleared');
 
             return back()->with('success', "Successfully deleted {$count} old activity log(s).");
 

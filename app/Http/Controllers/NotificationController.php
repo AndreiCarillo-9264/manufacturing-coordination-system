@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\FinishedGood;
 use App\Models\DeliverySchedule;
-use App\Models\JobOrder;
-use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
@@ -49,50 +48,19 @@ class NotificationController extends Controller
         }
 
         // Delayed deliveries
-        $delayedCount = DeliverySchedule::delayed()->count();
+        $delayedCount = DeliverySchedule::where('ds_status', '!=', 'DELIVERED')
+            ->where('delivery_date', '<', today())
+            ->count();
         if ($delayedCount > 0 && in_array($user->department, ['logistics', 'sales', 'admin'])) {
             $notifications[] = [
                 'id' => 'delayed-delivery',
                 'type' => 'danger',
                 'icon' => 'fa-clock',
                 'title' => 'Delayed Deliveries',
-                'message' => "{$delayedCount} delivery schedule(s) are past due",
+                'message' => "{$delayedCount} deliveries are overdue",
                 'time' => 'Just now',
                 'link' => route('delivery-schedules.index', ['delayed' => 1])
             ];
-        }
-
-        // Pending approvals - for inventory department
-        if ($user->department === 'inventory') {
-            $pendingCount = JobOrder::pending()->count();
-            if ($pendingCount > 0) {
-                $notifications[] = [
-                    'id' => 'pending-approval',
-                    'type' => 'info',
-                    'icon' => 'fa-clipboard-list',
-                    'title' => 'Pending Approvals',
-                    'message' => "{$pendingCount} job order(s) awaiting approval",
-                    'time' => 'Just now',
-                    'link' => route('job-orders.index', ['status' => 'pending'])
-                ];
-            }
-        }
-
-        // Production jobs not started - for production department
-        if ($user->department === 'production') {
-            $notStartedCount = JobOrder::where('status', 'approved')
-                ->count();
-            if ($notStartedCount > 0) {
-                $notifications[] = [
-                    'id' => 'production-pending',
-                    'type' => 'info',
-                    'icon' => 'fa-hammer',
-                    'title' => 'Production Pending',
-                    'message' => "{$notStartedCount} job order(s) approved and ready to produce",
-                    'time' => 'Just now',
-                    'link' => route('dashboard.production')
-                ];
-            }
         }
 
         return response()->json([

@@ -56,6 +56,11 @@ Broadcast::channel('notifications.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });
 
+// Also register the default Laravel notification broadcast channel so Notification::broadcast works
+Broadcast::channel('App.Models.User.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
+
 // Presence channels (show active users in department)
 Broadcast::channel('dashboard.{department}', function ($user, $department) {
     return [

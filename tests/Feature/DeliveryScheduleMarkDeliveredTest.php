@@ -43,7 +43,7 @@ class DeliveryScheduleMarkDeliveredTest extends TestCase
         $jobOrder = JobOrder::create([
             'product_id' => $product->id,
             'status' => 'approved',
-            'qty_ordered' => 10,
+            'quantity' => 10,
             'week_number' => (int) now()->format('W'),
             'date_needed' => now()->addDays(3)->toDateString(),
         ]);

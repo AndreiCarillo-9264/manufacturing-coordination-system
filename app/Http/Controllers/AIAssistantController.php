@@ -24,10 +24,28 @@ class AIAssistantController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->get();
                 
-            return view('ai-assistant', compact('conversations'));
+            // Determine active conversation (create default if none)
+            $activeConversation = Conversation::where('user_id', Auth::id())
+                ->where('is_active', true)
+                ->first();
+
+            if (! $activeConversation && $conversations->isNotEmpty()) {
+                $activeConversation = $conversations->first();
+            }
+
+            // Load chat history for the active conversation or an empty collection
+            if ($activeConversation) {
+                $chatHistory = ChatHistory::where('conversation_id', $activeConversation->id)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            } else {
+                $chatHistory = collect([]);
+            }
+
+            return view('ai-assistant', compact('conversations', 'chatHistory', 'activeConversation'));
         } catch (\Exception $e) {
             Log::error('Error loading AI assistant: ' . $e->getMessage());
-            return view('ai-assistant', ['conversations' => collect([])]);
+            return view('ai-assistant', ['conversations' => collect([]), 'chatHistory' => collect([])]);
         }
     }
     
@@ -176,9 +194,9 @@ class AIAssistantController extends Controller
     private function getTopProducts()
     {
         try {
-            return JobOrder::select('product_name', DB::raw('SUM(quantity) as total_ordered'))
+            return JobOrder::select('product_code', DB::raw('SUM(quantity) as total_ordered'))
                 ->where('created_at', '>=', now()->subDays(90))
-                ->groupBy('product_name')
+                ->groupBy('product_code')
                 ->orderBy('total_ordered', 'desc')
                 ->limit(5)
                 ->get()
@@ -191,14 +209,14 @@ class AIAssistantController extends Controller
     private function getInventorySummary()
     {
         try {
-            $lowStock = FinishedGood::where('current_stock', '<', DB::raw('reorder_level'))
+            $lowStock = FinishedGood::where('current_qty', '<', 50)
                 ->count();
             
-            $outOfStock = FinishedGood::where('current_stock', '<=', 0)->count();
+            $outOfStock = FinishedGood::where('current_qty', '<=', 0)->count();
             
             $totalProducts = FinishedGood::count();
             
-            $totalValue = FinishedGood::sum(DB::raw('current_stock * unit_cost'));
+            $totalValue = FinishedGood::sum(DB::raw('current_qty * selling_price'));
             
             return [
                 'total_products' => $totalProducts,
@@ -220,15 +238,15 @@ class AIAssistantController extends Controller
     private function getJobOrderSummary()
     {
         try {
-            $statuses = JobOrder::select('status', DB::raw('COUNT(*) as count'))
-                ->groupBy('status')
+            $statuses = JobOrder::select('jo_status', DB::raw('COUNT(*) as count'))
+                ->groupBy('jo_status')
                 ->get()
-                ->pluck('count', 'status')
+                ->pluck('count', 'jo_status')
                 ->toArray();
             
             $recentOrders = JobOrder::orderBy('created_at', 'desc')
                 ->limit(5)
-                ->get(['job_order_number', 'product_name', 'quantity', 'status', 'created_at'])
+                ->get(['jo_number', 'product_code', 'quantity', 'jo_status', 'created_at'])
                 ->toArray();
             
             return [
@@ -245,14 +263,14 @@ class AIAssistantController extends Controller
     private function getDeliverySummary()
     {
         try {
-            $pending = DeliverySchedule::where('status', 'pending')->count();
-            $completed = DeliverySchedule::where('status', 'delivered')->count();
+            $pending = DeliverySchedule::where('ds_status', 'ON SCHEDULE')->count();
+            $completed = DeliverySchedule::where('ds_status', 'DELIVERED')->count();
             
             $upcomingDeliveries = DeliverySchedule::where('delivery_date', '>=', now())
-                ->where('status', 'pending')
+                ->where('ds_status', 'ON SCHEDULE')
                 ->orderBy('delivery_date')
                 ->limit(5)
-                ->get(['delivery_date', 'customer_name', 'product_name', 'quantity'])
+                ->get(['delivery_date', 'customer_name', 'product_code', 'quantity'])
                 ->toArray();
             
             return [
@@ -379,7 +397,7 @@ class AIAssistantController extends Controller
                 if (!empty($data['top_products'])) {
                     $basePrompt .= "\nTop Products:\n";
                     foreach ($data['top_products'] as $product) {
-                        $basePrompt .= "  - {$product['product_name']}: {$product['total_ordered']} units\n";
+                        $basePrompt .= "  - {$product['product_code']}: {$product['total_ordered']} units\n";
                     }
                 }
                 
@@ -490,7 +508,7 @@ class AIAssistantController extends Controller
     
     private function chatMockResponse($userMessage, $conversationId)
     {
-        $aiResponse = "I'm running in demo mode. To enable full AI capabilities with forecasting and system knowledge, please configure GROQ_API_KEY in your .env file.\n\n";
+        $aiResponse = "I'm running in demo mode. To enable full AI capabilities with forecasting and system knowledge, please configure GROQ_API_KEY or OPENAI_API_KEY in your .env file.\n\n";
         $aiResponse .= "I can help you with:\n";
         $aiResponse .= "• Forecasting demand and trends\n";
         $aiResponse .= "• Creating and managing job orders\n";

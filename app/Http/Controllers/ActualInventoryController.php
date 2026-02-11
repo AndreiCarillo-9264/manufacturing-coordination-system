@@ -17,7 +17,7 @@ class ActualInventoryController extends Controller
     {
         $this->authorize('viewAny', ActualInventory::class);
 
-        $query = ActualInventory::with(['product', 'countedBy', 'verifiedBy']);
+        $query = ActualInventory::with(['product']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -38,6 +38,21 @@ class ActualInventoryController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
+        // Filter by stock level thresholds (low/medium/high)
+        if ($request->filled('stock_level')) {
+            switch ($request->stock_level) {
+                case 'low':
+                    $query->where('fg_quantity', '<', 100);
+                    break;
+                case 'medium':
+                    $query->whereBetween('fg_quantity', [100, 500]);
+                    break;
+                case 'high':
+                    $query->where('fg_quantity', '>', 500);
+                    break;
+            }
+        }
+
         if ($request->has('verified')) {
             $query->verified();
         }
@@ -54,9 +69,7 @@ class ActualInventoryController extends Controller
 
         $locations = ActualInventory::whereNotNull('location')
             ->distinct()
-            ->pluck('location')
-            ->sort()
-            ->values();
+            ->pluck('location');
 
         return view('actual-inventories.index', compact('actualInventories', 'products', 'locations'));
     }
@@ -65,51 +78,37 @@ class ActualInventoryController extends Controller
     {
         $this->authorize('create', ActualInventory::class);
 
-        $products = Product::select('id', 'product_code', 'model_name', 'uom')
-            ->orderByRaw("COALESCE(model_name, product_code) ASC")
-            ->get();
+        $products = Product::orderByRaw("COALESCE(model_name, product_code) ASC")->get();
 
-        $users = User::where('department', 'inventory')
-            ->orderBy('name')
-            ->get();
-
-        return view('actual-inventories.create', compact('products', 'users'));
+        return view('actual-inventories.create', compact('products'));
     }
 
     public function store(StoreActualInventoryRequest $request)
     {
         $this->authorize('create', ActualInventory::class);
 
+        $validated = $request->validated();
+
         try {
             DB::beginTransaction();
 
-            $validated = $request->validated();
-
-            // Auto-set counted_at if counted_by is provided
-            if (!empty($validated['counted_by_user_id']) && empty($validated['counted_at'])) {
-                $validated['counted_at'] = now();
-            }
-
-            $actualInventory = ActualInventory::create($validated);
-
-            // Log activity
-            activity()
-                ->performedOn($actualInventory)
-                ->causedBy(auth()->user())
-                ->withProperties(['new' => $actualInventory->toArray()])
-                ->log('Actual Inventory created');
+            $inventory = ActualInventory::create(array_merge($validated, [
+                'tag_number' => ActualInventory::generateTagNumber(),
+                'counted_by' => $validated['counted_by'] ?? auth()->user()->name,
+                'counted_at' => now(),
+                'status' => 'Counted',
+            ]));
 
             DB::commit();
 
             return redirect()
-                ->route('actual-inventories.show', $actualInventory)
-                ->with('success', 'Actual Inventory created successfully.');
+                ->route('actual-inventories.index')
+                ->with('success', 'Inventory record created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Actual Inventory creation failed: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
-                'data' => $request->validated()
+                'user_id' => auth()->id()
             ]);
 
             return back()
@@ -118,52 +117,30 @@ class ActualInventoryController extends Controller
         }
     }
 
-    public function show(ActualInventory $actualInventory)
-    {
-        $this->authorize('view', $actualInventory);
-
-        $actualInventory->load(['product', 'countedBy', 'verifiedBy']);
-
-        return view('actual-inventories.show', compact('actualInventory'));
-    }
-
     public function edit(ActualInventory $actualInventory)
     {
         $this->authorize('update', $actualInventory);
 
-        $products = Product::select('id', 'product_code', 'model_name', 'uom')
-            ->orderByRaw("COALESCE(model_name, product_code) ASC")
-            ->get();
-
-        $users = User::where('department', 'inventory')
-            ->orderBy('name')
-            ->get();
-
-        return view('actual-inventories.edit', compact('actualInventory', 'products', 'users'));
+        return view('actual-inventories.edit', compact('actualInventory'));
     }
 
     public function update(UpdateActualInventoryRequest $request, ActualInventory $actualInventory)
     {
         $this->authorize('update', $actualInventory);
 
+        $validated = $request->validated();
+
         try {
             DB::beginTransaction();
 
             $oldData = $actualInventory->toArray();
-            $actualInventory->update($request->validated());
-
-            // Log activity
-            activity()
-                ->performedOn($actualInventory)
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData, 'new' => $actualInventory->toArray()])
-                ->log('Actual Inventory updated');
+            $actualInventory->update($validated);
 
             DB::commit();
 
             return redirect()
                 ->route('actual-inventories.index')
-                ->with('success', 'Actual Inventory updated successfully.');
+                ->with('success', 'Inventory record updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -185,14 +162,9 @@ class ActualInventoryController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $actualInventory->toArray();
             $actualInventory->delete();
 
-            // Log activity
-            activity()
-                ->causedBy(auth()->user())
-                ->withProperties(['old' => $oldData])
-                ->log('Actual Inventory deleted');
+            // Log activity is handled by LogsActivity trait
 
             DB::commit();
 
@@ -213,9 +185,6 @@ class ActualInventoryController extends Controller
         }
     }
 
-    /**
-     * Mark inventory as verified
-     */
     public function verify(ActualInventory $actualInventory)
     {
         $this->authorize('update', $actualInventory);
@@ -223,20 +192,64 @@ class ActualInventoryController extends Controller
         try {
             $actualInventory->markVerified(auth()->id());
 
-            activity()
-                ->performedOn($actualInventory)
-                ->causedBy(auth()->user())
-                ->log('Actual Inventory verified');
-
-            return back()->with('success', 'Inventory count verified successfully.');
+            return redirect()
+                ->route('dashboard.inventory')
+                ->with('success', 'Inventory count verified successfully!');
 
         } catch (\Exception $e) {
             Log::error('Verification failed: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
-                'actual_inventory_id' => $actualInventory->id
+                'actual_inventory_id' => $actualInventory->id,
+                'exception' => $e
             ]);
 
-            return back()->with('error', 'Failed to verify inventory count.');
+            return redirect()
+                ->route('dashboard.inventory')
+                ->with('error', 'Failed to verify inventory count: ' . $e->getMessage());
         }
+    }
+
+    public function export()
+    {
+        $this->authorize('viewAny', ActualInventory::class);
+
+        $data = ActualInventory::with('product')->get();
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename=actual_inventories_' . now()->format('Y-m-d_His') . '.csv',
+        ];
+        
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            
+            // Write BOM for Excel UTF-8 compatibility
+            fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            
+            // Write headers
+            fputcsv($file, ['Tag Number', 'Product Code', 'Model Name', 'Counted Qty', 'System Qty', 'Variance', 'Status', 'Location', 'Counted By', 'Counted At', 'Verified By', 'Verified At']);
+            
+            // Write data rows
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->tag_number,
+                    $row->product_code,
+                    $row->product?->model_name ?? '',
+                    $row->fg_quantity,
+                    $row->system_quantity ?? 0,
+                    $row->variance ?? 0,
+                    $row->status,
+                    $row->location ?? '',
+                    $row->counted_by ?? '',
+                    $row->counted_at?->format('Y-m-d H:i:s') ?? '',
+                    $row->verified_by ?? '',
+                    $row->verified_at?->format('Y-m-d H:i:s') ?? '',
+                ]);
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 }

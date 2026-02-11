@@ -21,16 +21,15 @@ $jobOrderId = $job->id;
 $rules = [
     'jo_number' => ['nullable','string', Illuminate\Validation\Rule::unique('job_orders','jo_number')->ignore($jobOrderId),'max:255'],
     'po_number' => ['nullable','string', Illuminate\Validation\Rule::unique('job_orders','po_number')->ignore($jobOrderId),'max:255'],
-    'status' => 'nullable|in:pending,approved,in_progress,completed,cancelled',
-    'fulfillment_status' => 'nullable|in:full,balance,excess',
+    'jo_status' => 'nullable|in:Pending,JO Full,Approved,In Progress,Cancelled',
     'product_id' => 'required|exists:products,id',
-    'qty_ordered' => 'required|integer|min:1',
-    'qty_balance' => 'nullable|integer|min:0',
-    'qty_transferred_to_ppqc' => 'nullable|integer|min:0',
-    'qty_in_delivery_schedule' => 'nullable|integer|min:0',
+    'quantity' => 'required|integer|min:1',
+    'jo_balance' => 'nullable|integer|min:0',
+    'ppqc_transfer' => 'nullable|integer|min:0',
+    'ds_quantity' => 'nullable|integer|min:0',
     'withdrawal_status' => 'nullable|in:approved,with_fg_stocks',
     'withdrawal_number' => 'nullable|string|max:255',
-    'week_number' => 'nullable|integer|min:1|max:53',
+    'week_number' => 'nullable|string|max:10',
     'date_needed' => 'required|date',
     'date_approved' => 'nullable|date',
     'remarks' => 'nullable|string',
@@ -41,7 +40,7 @@ $data = [
     'jo_number' => $job->jo_number,
     'po_number' => null,
     'product_id' => $job->product_id,
-    'qty_ordered' => $job->qty_ordered,
+    'quantity' => $job->quantity,
     'date_needed' => $job->date_needed->format('Y-m-d'),
 ];
 
@@ -61,7 +60,7 @@ if ($other) {
         'jo_number' => $job->jo_number,
         'po_number' => $other->po_number,
         'product_id' => $job->product_id,
-        'qty_ordered' => $job->qty_ordered,
+        'quantity' => $job->quantity,
         'date_needed' => $job->date_needed->format('Y-m-d'),
     ];
     $v2 = Validator::make($data2, $rules);

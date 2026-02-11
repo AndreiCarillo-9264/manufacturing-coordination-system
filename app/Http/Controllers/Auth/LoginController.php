@@ -41,8 +41,23 @@ class LoginController extends Controller
 
         $remember = $request->boolean('remember');
 
+        // Prevent login for explicitly deactivated or soft-deleted users
+        $user = \App\Models\User::withTrashed()->where('username', $request->username)->first();
+        // Treat NULL (unknown) as active; only block when is_active is explicitly false
+        if ($user && ($user->is_active === false || $user->trashed())) {
+            throw ValidationException::withMessages([
+                'username' => __('Your account is inactive. Please contact an administrator.'),
+            ]);
+        }
+
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+
+            // Update last login timestamp
+            $user = Auth::user();
+            if ($user) {
+                $user->update(['last_login_at' => now()]);
+            }
 
             // Log successful login
             $this->logger->logSystem('User logged in', [

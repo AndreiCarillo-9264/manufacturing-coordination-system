@@ -32,14 +32,20 @@ class ModelObserver
         }
 
         ActivityLog::create([
-            'model_type' => get_class($model),
-            'model_id' => $model->id,
-            'action' => $action,
+            'log_name' => class_basename(get_class($model)),
+            'description' => $action,
+            'subject_type' => get_class($model),
+            'subject_id' => $model->id,
+            'event' => $action,
             'user_id' => auth()->id(),
+            'user_name' => auth()->user()?->name ?? 'System',
+            'user_department' => auth()->user()?->department ?? null,
             'old_values' => $oldValues,
             'new_values' => $action !== 'deleted' ? $model->getAttributes() : null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
+            'method' => request()->method(),
+            'url' => request()->url(),
         ]);
     }
 }

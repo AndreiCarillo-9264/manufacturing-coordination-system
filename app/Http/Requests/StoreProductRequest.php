@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProductRequest extends FormRequest
 {
@@ -14,10 +15,10 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_code' => 'nullable|string|unique:products,product_code|max:255',
+            'product_code' => ['nullable', 'string', Rule::unique('products', 'product_code'), 'max:255'],
             'model_name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'customer' => 'nullable|string|max:255',
+            'customer_name' => 'nullable|string|max:255',
             'specs' => 'nullable|string|max:2000',
             'dimension' => 'nullable|string|max:255',
             'location' => 'nullable|string|max:255',
@@ -58,6 +59,56 @@ class StoreProductRequest extends FormRequest
         // Auto-set encoded_by if not provided
         if (!$this->encoded_by_user_id && auth()->check()) {
             $this->merge(['encoded_by_user_id' => auth()->id()]);
+        }
+
+        // Map legacy / form field names to model column names
+        if ($this->has('customer') && ! $this->has('customer_name')) {
+            $this->merge(['customer_name' => $this->input('customer')]);
+        }
+
+        if ($this->has('encoded_by_user_id') && ! $this->has('encoded_by')) {
+            $this->merge(['encoded_by' => $this->input('encoded_by_user_id')]);
+        }
+
+        // Ensure product_code is present; generate server-side if missing
+        if (! $this->filled('product_code')) {
+            $year = now()->format('Y');
+            $prefix = "PRD-{$year}-";
+            
+            // Find the highest number for this year's products
+            $lastProduct = \App\Models\Product::where('product_code', 'like', $prefix . '%')
+                ->orderByRaw('CAST(SUBSTRING(product_code, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
+                ->first(['product_code']);
+
+            $next = 1;
+            if ($lastProduct && $lastProduct->product_code) {
+                // Extract number from code like "PRD-2026-0001"
+                $parts = explode('-', $lastProduct->product_code);
+                $lastNum = intval(end($parts));
+                if ($lastNum > 0) {
+                    $next = $lastNum + 1;
+                }
+            }
+
+            // Generate code and ensure it doesn't exist (retry if needed)
+            $maxAttempts = 10;
+            $attempt = 0;
+            $code = null;
+            
+            while ($attempt < $maxAttempts) {
+                $code = $prefix . str_pad($next + $attempt, 4, '0', STR_PAD_LEFT);
+                
+                // Check if code already exists (case-sensitive)
+                $exists = \App\Models\Product::where('product_code', $code)->exists();
+                
+                if (!$exists) {
+                    break;
+                }
+                
+                $attempt++;
+            }
+
+            $this->merge(['product_code' => $code ?? ($prefix . str_pad($next, 4, '0', STR_PAD_LEFT))]);
         }
     }
 }

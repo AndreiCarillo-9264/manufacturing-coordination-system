@@ -14,7 +14,7 @@ if (! $user) {
 
 $jo = \App\Models\JobOrder::create([
     'product_id' => $product->id,
-    'qty_ordered' => 5,
+    'quantity' => 5,
     'date_needed' => Carbon::now()->addDays(3)->format('Y-m-d'),
     'encoded_by_user_id' => $user->id,
 ]);

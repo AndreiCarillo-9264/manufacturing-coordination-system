@@ -5,11 +5,11 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateTransferRequest extends FormRequest
+class UpdateInventoryTransferRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('transfer'));
+        return $this->user()->can('update', $this->route('transfer') ?? new \App\Models\InventoryTransfer());
     }
 
     public function rules(): array
@@ -20,30 +20,24 @@ class UpdateTransferRequest extends FormRequest
             'ptt_number' => [
                 'nullable',
                 'string',
-                Rule::unique('transfers', 'ptt_number')->ignore($transferId),
+                Rule::unique('inventory_transfers', 'ptt_number')->ignore($transferId),
                 'max:255'
             ],
             'job_order_id' => 'required|exists:job_orders,id',
             'product_id' => 'nullable|exists:products,id',
-            'section' => 'required|string|max:255',
+            'section' => 'required|in:LOCAL,IMPORTED,EXPORT',
             'category' => 'required|string|max:255',
-            'status' => 'nullable|in:balance,complete',
-            'delivery_schedule_status' => 'nullable|string|max:255',
-            'date_transferred' => 'required|date',
+            'status' => 'nullable|in:Balance,Complete',
+            'date_transferred' => 'required|date|after_or_equal:today',
             'time_transferred' => 'required',
-            'date_delivery_scheduled' => 'required|date',
-            'week_number' => 'nullable|integer|min:1|max:53',
-            'jit_days' => 'nullable|integer',
-            'qty_transferred' => 'required|integer|min:1',
-            'qty_jo_balance' => 'nullable|integer|min:0',
-            'grade' => 'nullable|string|max:255',
-            'dimension' => 'nullable|string|max:255',
-            'unit_selling_price' => 'nullable|numeric|min:0',
-            'total_amount' => 'nullable|numeric|min:0',
-            'received_by_user_id' => 'required|exists:users,id',
-            'date_received' => 'required|date',
+            'quantity' => 'required|integer|min:1',
+            'delivery_date' => 'nullable|date',
+            'transfer_by' => 'nullable|string|max:255',
+            'received_by_user_id' => 'nullable|exists:users,id|required_without:received_by_name',
+            'received_by_name' => 'nullable|string|max:255|required_without:received_by_user_id',
+            'date_received' => 'required|date|after_or_equal:today',
             'time_received' => 'required',
-            'qty_received' => 'required|integer|min:1',
+            'quantity_received' => 'required|integer|min:1',
             'remarks' => 'nullable|string',
         ];
     }
@@ -87,6 +81,12 @@ class UpdateTransferRequest extends FormRequest
         if ($this->qty_received && $this->qty_transferred) {
             $status = $this->qty_received >= $this->qty_transferred ? 'complete' : 'balance';
             $this->merge(['status' => $status]);
+        }
+
+        // If a manual name is provided but no user id, set recorded user to the current user
+        // (preserve the manual name while keeping DB constraints satisfied)
+        if ($this->received_by_name && !$this->received_by_user_id && auth()->check()) {
+            $this->merge(['received_by_user_id' => auth()->id()]);
         }
     }
 }

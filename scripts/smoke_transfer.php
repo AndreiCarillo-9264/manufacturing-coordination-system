@@ -13,7 +13,7 @@ if (! $user) {
 }
 
 $product = \App\Models\Product::create(["model_name" => "SMOKE-PRD", "customer" => "TestCo", "uom" => "pcs", "moq" => 1, "selling_price" => 100, "pc" => "PC"]);
-$jo = \App\Models\JobOrder::create(["product_id" => $product->id, "qty_ordered" => 50, "status" => "approved", "encoded_by_user_id" => $user->id, "po_number" => "PO-SMOKE-1", "week_number" => (int) date('W'), "date_needed" => now()->addDays(7)->format('Y-m-d')]);
+$jo = \App\Models\JobOrder::create(["product_id" => $product->id, "quantity" => 50, "jo_status" => "JO Full", "encoded_by" => $user->id, "po_number" => "PO-SMOKE-1", "week_number" => (string) date('W'), "date_needed" => now()->addDays(7)->format('Y-m-d')]);
 
 $validated = [
     "job_order_id" => $jo->id,
@@ -36,7 +36,7 @@ $validated["total_amount"] = $validated["qty_received"] * $validated["unit_selli
 $validated["week_number"] = (int) date("W", strtotime($validated["date_transferred"]));
 $validated["jit_days"] = Carbon::parse($validated["date_delivery_scheduled"])->diffInDays($validated["date_transferred"]);
 $validated["status"] = $validated["qty_received"] >= $validated["qty_transferred"] ? "complete" : "balance";
-$validated["qty_jo_balance"] = $jo->qty_ordered - $jo->transfers()->sum("qty_received") - $validated["qty_received"];
+$validated["qty_jo_balance"] = $jo->quantity - $jo->transfers()->sum("qty_received") - $validated["qty_received"];
 
 $transfer = \App\Models\Transfer::create($validated);
 if ($jo->status === "approved") {

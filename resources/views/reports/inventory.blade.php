@@ -23,13 +23,11 @@
             </div>
         </div>
 
-        <div class="flex gap-3 pt-4">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium transition">
-                <i class="fas fa-search mr-2"></i>Apply Filters
-            </button>
+        <div class="flex gap-3 pt-4 items-center">
+            <!-- filters submitted by pressing Enter or via form submission -->
             <a href="{{ route('reports.inventory') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-md text-sm font-medium transition">
                 <i class="fas fa-redo mr-2"></i>Reset
-            </a>
+            </a> 
             <form action="{{ route('reports.inventory.pdf') }}" method="GET" class="flex gap-2" style="margin-left: auto;">
                 @foreach(request()->query() as $key => $value)
                 <input type="hidden" name="{{ $key }}" value="{{ $value }}">
@@ -75,10 +73,10 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium
                         {{ $item->amount_variance != 0 ? 'text-orange-600' : 'text-gray-900' }}">
-                        ₱{{ number_format($item->amount_variance, 2) }}
+                        {{ currencySymbol($item->product->currency ?? 'PHP') }}{{ number_format($item->amount_variance, 2) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        ₱{{ number_format($item->amount_ending, 2) }}
+                        {{ currencySymbol($item->product->currency ?? 'PHP') }}{{ number_format($item->amount_ending, 2) }}
                     </td>
                 </tr>
                 @empty
@@ -109,13 +107,23 @@
             </div>
             <div>
                 <p class="text-sm text-gray-600">Total Variance Amount</p>
+                @if(isset($reportCurrency))
                 <p class="text-2xl font-bold {{ $totalVarianceAmount != 0 ? 'text-orange-600' : 'text-gray-900' }}">
-                    ₱{{ number_format($totalVarianceAmount, 2) }}
+                    {{ currencySymbol($reportCurrency) }}{{ number_format($totalVarianceAmount, 2) }}
                 </p>
+                @else
+                <p class="text-2xl font-bold {{ $totalVarianceAmount != 0 ? 'text-orange-600' : 'text-gray-900' }}">
+                    {{ number_format($totalVarianceAmount, 2) }} <small class="text-gray-500">(Multiple Currencies)</small>
+                </p>
+                @endif
             </div>
             <div>
                 <p class="text-sm text-gray-600">Total Value</p>
-                <p class="text-2xl font-bold text-gray-900">₱{{ number_format($totalValue, 2) }}</p>
+                @if(isset($reportCurrency))
+                <p class="text-2xl font-bold text-gray-900">{{ currencySymbol($reportCurrency) }}{{ number_format($totalValue, 2) }}</p>
+                @else
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($totalValue, 2) }} <small class="text-gray-500">(Multiple Currencies)</small></p>
+                @endif
             </div>
         </div>
     </div>

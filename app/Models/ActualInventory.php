@@ -6,60 +6,289 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\AutoFillsFromProduct;
+use App\Traits\TracksUser;
+use App\Traits\LogsActivity;
 
 class ActualInventory extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AutoFillsFromProduct, TracksUser, LogsActivity;
+
+    protected $table = 'actual_inventory';
 
     protected $fillable = [
         'tag_number',
         'product_id',
-        'qty_counted',
+        'finished_good_id',
+        
+        // Auto-filled from product
+        'product_code',
+        'customer_name',
+        'model_name',
+        'description',
+        'dimension',
+        'uom',
+        
+        // Inventory count
+        'fg_quantity',
         'location',
-        'counted_by_user_id',
-        'verified_by_user_id',
+        
+        // Count verification
+        'counted_by',
         'counted_at',
+        'verified_by',
         'verified_at',
+        'status',
+        
         'remarks',
+        
+        // Audit fields
+        'encoded_by',
+        'date_encoded',
+        'updated_by',
     ];
 
     protected $casts = [
-        'qty_counted' => 'integer',
+        'date_encoded' => 'datetime',
         'counted_at' => 'datetime',
         'verified_at' => 'datetime',
+        'fg_quantity' => 'integer',
     ];
 
-    // Relationships
+    // Backward compatibility
+    protected $appends = ['qty_counted'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Count {$this->tag_number} {$eventName}");
+    }
+
+    // ========== RELATIONSHIPS ==========
+    
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function countedBy(): BelongsTo
+    public function finishedGood(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'counted_by_user_id');
+        return $this->belongsTo(FinishedGood::class);
     }
 
-    public function verifiedBy(): BelongsTo
+    public function encodedByUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'verified_by_user_id');
+        return $this->belongsTo(User::class, 'encoded_by');
     }
 
-    // Helper methods
-    public function markCounted(int $userId): void
+    public function updatedByUser(): BelongsTo
     {
-        $this->update([
-            'counted_by_user_id' => $userId,
-            'counted_at' => now(),
-        ]);
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function markVerified(int $userId): void
+    // Note: counted_by and verified_by are now string names, not user IDs
+    // For backward compatibility, we can add methods to find users by name
+    public function getCountedByUserAttribute()
     {
-        $this->update([
-            'verified_by_user_id' => $userId,
-            'verified_at' => now(),
-        ]);
+        if (!$this->counted_by) {
+            return null;
+        }
+        return User::where('name', $this->counted_by)->first();
+    }
+
+    public function getVerifiedByUserAttribute()
+    {
+        if (!$this->verified_by) {
+            return null;
+        }
+        return User::where('name', $this->verified_by)->first();
+    }
+
+    // ========== SCOPES ==========
+    
+    public function scopeStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'Pending');
+    }
+
+    public function scopeCounted($query)
+    {
+        return $query->where('status', 'Counted');
+    }
+
+    public function scopeVerified($query)
+    {
+        return $query->where('status', 'Verified');
+    }
+
+    public function scopeDiscrepancies($query)
+    {
+        return $query->where('status', 'Discrepancy');
+    }
+
+    public function scopeLocation($query, $location)
+    {
+        return $query->where('location', 'LIKE', "%{$location}%");
+    }
+
+    public function scopeByLocation($query, string $location)
+    {
+        return $query->where('location', $location);
+    }
+
+    public function scopeUnverified($query)
+    {
+        return $query->whereNull('verified_at');
+    }
+
+    // ========== HELPER METHODS ==========
+    
+    public function markAsCounted(string $countedBy): self
+    {
+        $this->counted_by = $countedBy;
+        $this->counted_at = now();
+        $this->status = 'Counted';
+        $this->save();
+
+        return $this;
+    }
+
+    public function markAsVerified(string $verifiedBy): self
+    {
+        // Allow verification regardless of current status
+        // If counted_at is set but status is still pending, mark as counted first
+        if ($this->status === 'Pending' && !is_null($this->counted_at)) {
+            $this->status = 'Counted';
+        }
+
+        $this->verified_by = $verifiedBy;
+        $this->verified_at = \Illuminate\Support\Carbon::now();
+        $this->status = 'Verified';
+
+        // UPDATE FINISHED GOODS FIRST (must happen before discrepancy check)
+        $this->updateFinishedGoodsSimple();
+
+        // THEN check for discrepancy with the UPDATED finished goods
+        try {
+            $fgCurrentQty = \Illuminate\Support\Facades\DB::table('finished_goods')
+                ->where('product_id', $this->product_id)
+                ->value('current_qty');
+
+            // If quantities don't match after update, it's a discrepancy
+            if ($fgCurrentQty !== null && $this->fg_quantity !== $fgCurrentQty) {
+                $this->status = 'Discrepancy';
+            }
+        } catch (\Exception $e) {
+            // Log but don't fail if there's an issue with finished good lookup
+            \Illuminate\Support\Facades\Log::warning('Error checking finished good discrepancy: ' . $e->getMessage());
+        }
+
+        // Save the inventory record with final status
+        $this->save();
+
+        // Create endorsement to logistics asynchronously (doesn't block the response)
+        // Use a deferred callback so it runs after response is sent
+        \Illuminate\Support\Facades\DB::transaction(function () {
+            $this->createEndorsementToLogistics();
+        });
+
+        return $this;
+    }
+
+    private function updateFinishedGoodsSimple(): void
+    {
+        try {
+            // Use updateOrInsert for maximum performance
+            // This is faster than checking first then updating
+            \Illuminate\Support\Facades\DB::table('finished_goods')->updateOrInsert(
+                // Search condition
+                ['product_id' => $this->product_id],
+                // Update values (or insert if not found)
+                [
+                    'current_qty' => $this->fg_quantity,
+                    'updated_by' => \Illuminate\Support\Facades\Auth::id(),
+                    'updated_at' => now(),
+                    // These only used on insert
+                    'fg_code' => 'FG-' . \Illuminate\Support\Str::uuid(),
+                    'product_code' => $this->product_code,
+                    'customer_name' => $this->customer_name,
+                    'model_name' => $this->model_name,
+                    'description' => $this->description,
+                    'uom' => $this->uom ?? 'PC/S',
+                    'buffer_stocks' => 500, // Default buffer stock for stock health calculations
+                    'encoded_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                    'created_at' => now(),
+                ]
+            );
+        } catch (\Exception $e) {
+            // Log but don't fail - verification should still succeed
+            \Illuminate\Support\Facades\Log::warning('Error updating finished goods after verification: ' . $e->getMessage(), [
+                'inventory_id' => $this->id,
+            ]);
+        }
+    }
+
+    private function createEndorsementToLogistics(): void
+    {
+        try {
+            // Check if auto-creation is enabled (can be disabled via env or feature flag)
+            if (!config('app.auto_create_etl_on_verification', true)) {
+                return; // Skip ETL creation if disabled
+            }
+
+            // Use a simple check-and-insert pattern for speed
+            $existingCount = \Illuminate\Support\Facades\DB::table('endorse_to_logistics')
+                ->where('product_id', $this->product_id)
+                ->where('status', 'pending')
+                ->count();
+
+            // Only create if one doesn't already exist
+            if ($existingCount === 0) {
+                // Create temp model to generate proper ETL code
+                $tempModel = new \App\Models\EndorseToLogistic([
+                    'product_id' => $this->product_id,
+                    'product_code' => $this->product_code,
+                ]);
+                
+                // Use raw insert for maximum speed but with proper ETL code generation
+                \Illuminate\Support\Facades\DB::table('endorse_to_logistics')->insert([
+                    'etl_code' => \App\Models\EndorseToLogistic::generateETLCode($tempModel),
+                    'product_id' => $this->product_id,
+                    'product_code' => $this->product_code,
+                    'customer_name' => $this->customer_name,
+                    'model_name' => $this->model_name,
+                    'description' => $this->description,
+                    'uom' => $this->uom ?? 'PC/S',
+                    'date' => now()->toDateString(),
+                    'time' => now()->toTimeString(),
+                    'total_out' => $this->fg_quantity,
+                    'quantity' => $this->fg_quantity,
+                    'status' => 'pending',
+                    'encoded_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                    'date_encoded' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \Illuminate\Support\Facades\Log::info('Created endorsement to logistics', [
+                    'inventory_id' => $this->id,
+                    'product_id' => $this->product_id,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log but don't fail - verification should still succeed
+            \Illuminate\Support\Facades\Log::warning('Error creating endorsement to logistics: ' . $e->getMessage(), [
+                'inventory_id' => $this->id,
+            ]);
+        }
     }
 
     public function isVerified(): bool
@@ -72,48 +301,190 @@ class ActualInventory extends Model
         return !is_null($this->counted_at);
     }
 
-    // Scopes
-    public function scopeVerified($query)
+    public function hasDiscrepancy(): bool
     {
-        return $query->whereNotNull('verified_at');
+        $variance = $this->variance;
+        return $variance !== null && $variance !== 0;
     }
 
-    // Sequence helper for tag_number
-    public static function nextTagNumber(): string
+    public function resolveDiscrepancy(int $adjustedQuantity, string $resolvedBy, string $reason): self
     {
-        $year = date('Y');
-        $last = static::where('tag_number', 'like', "TAG-{$year}-%")->orderBy('tag_number', 'desc')->first();
-        $nextNumber = 1;
-        if ($last) {
-            $parts = explode('-', $last->tag_number);
-            $lastNumber = (int) end($parts);
-            $nextNumber = $lastNumber + 1;
+        if ($this->status !== 'Discrepancy') {
+            throw new \Exception("Only discrepancies can be resolved");
         }
-        return sprintf('TAG-%d-%04d', $year, $nextNumber);
+
+        // Update finished good stock
+        if ($this->finishedGood) {
+            $this->finishedGood->adjustStock($adjustedQuantity, "Resolved by {$resolvedBy}: {$reason}");
+        }
+
+        // Update inventory count
+        $this->fg_quantity = $adjustedQuantity;
+        $this->status = 'Verified';
+        $this->remarks = ($this->remarks ? $this->remarks . "\n" : '') . 
+                        "Discrepancy resolved by {$resolvedBy}: {$reason}";
+        $this->save();
+
+        return $this;
     }
 
-    // Ensure tag_number is set when creating
+    // ========== BACKWARD COMPATIBILITY ACCESSORS ==========
+    
+    // Old: qty_counted -> New: fg_quantity
+    public function getQtyCountedAttribute()
+    {
+        return $this->fg_quantity;
+    }
+
+    public function setQtyCountedAttribute($value): void
+    {
+        $this->attributes['fg_quantity'] = $value;
+    }
+
+    // Legacy method names for marking counted/verified
+    public function markCounted(int $userId): void
+    {
+        // In new version, we use name instead of user ID
+        $user = User::find($userId);
+        if ($user) {
+            $this->markAsCounted($user->name);
+        }
+    }
+
+    public function markVerified(int $userId): void
+    {
+        // In new version, we use name instead of user ID
+        $user = User::find($userId);
+        if ($user) {
+            $this->markAsVerified($user->name);
+        }
+    }
+
+    // Legacy relationship accessors (no longer direct user relationships)
+    public function countedBy(): ?BelongsTo
+    {
+        return null; // Not a direct relationship anymore
+    }
+
+    public function verifiedBy(): ?BelongsTo
+    {
+        return null; // Not a direct relationship anymore
+    }
+
+    // ========== BOOT METHOD ==========
+    
     protected static function booted(): void
     {
-        static::creating(function (ActualInventory $inv) {
-            if (empty($inv->tag_number)) {
-                $inv->tag_number = static::nextTagNumber();
+        static::creating(function (ActualInventory $model) {
+            // Auto-generate tag number
+            if (empty($model->tag_number)) {
+                $model->tag_number = static::generateTagNumber();
+            }
+
+            // Set default status
+            if (empty($model->status)) {
+                $model->status = 'Pending';
+            }
+
+            // Link to finished good if exists
+            if ($model->product_id && !$model->finished_good_id) {
+                $finishedGood = FinishedGood::where('product_id', $model->product_id)->first();
+                if ($finishedGood) {
+                    $model->finished_good_id = $finishedGood->id;
+                }
+            }
+        });
+
+        static::updated(function (ActualInventory $model) {
+            // Auto-check for discrepancy when verified
+            if ($model->isDirty('verified_at') && $model->verified_at) {
+                if ($model->finishedGood && $model->fg_quantity !== $model->finishedGood->current_qty) {
+                    $model->status = 'Discrepancy';
+                    $model->save();
+                }
             }
         });
     }
 
-    public function scopeUnverified($query)
+    // ========== CODE GENERATION ==========
+    
+    public static function generateTagNumber(): string
     {
-        return $query->whereNull('verified_at');
+        $year = date('Y');
+        $prefix = 'TAG-' . $year . '-';
+        
+        $lastTag = static::where('tag_number', 'LIKE', $prefix . '%')
+            ->orderBy('tag_number', 'desc')
+            ->first();
+
+        if ($lastTag) {
+            $lastNumber = (int) substr($lastTag->tag_number, strlen($prefix));
+            $newNumber = $lastNumber + 1;
+        } else {
+            $newNumber = 1;
+        }
+
+        return $prefix . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
     }
 
-    public function scopeCounted($query)
+    public static function nextTagNumber(): string
     {
-        return $query->whereNotNull('counted_at');
+        return static::generateTagNumber();
     }
 
-    public function scopeByLocation($query, string $location)
+    // ========== COMPUTED ATTRIBUTES ==========
+    
+    public function getVarianceAttribute(): ?int
     {
-        return $query->where('location', $location);
+        if (!$this->finished_good_id || !$this->finishedGood) {
+            return null;
+        }
+
+        return $this->fg_quantity - $this->finishedGood->current_qty;
+    }
+
+    public function getDiscrepancyPercentageAttribute(): ?float
+    {
+        if (!$this->finished_good_id || !$this->finishedGood) {
+            return null;
+        }
+
+        $systemQty = $this->finishedGood->current_qty;
+        if ($systemQty === 0) {
+            return null;
+        }
+
+        $variance = $this->variance;
+        return ($variance / $systemQty) * 100;
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return $this->status ?? 'Pending';
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'Verified' => 'green',
+            'Counted' => 'blue',
+            'Discrepancy' => 'red',
+            'Pending' => 'yellow',
+            default => 'gray',
+        };
+    }
+
+    public function getSystemQuantityAttribute(): ?int
+    {
+        return $this->finishedGood?->current_qty;
+    }
+
+    public function getIsAccurateAttribute(): bool
+    {
+        if (!$this->finishedGood) {
+            return true;
+        }
+
+        return $this->fg_quantity === $this->finishedGood->current_qty;
     }
 }

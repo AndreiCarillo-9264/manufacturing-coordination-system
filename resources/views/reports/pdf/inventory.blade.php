@@ -1,255 +1,142 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Inventory Report - {{ now()->format('Y-m-d') }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
+@extends('reports.layouts.pdf-layout')
 
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 11pt;
-            color: #333;
-            line-height: 1.4;
-        }
+@section('report_title')
+    Inventory Report
+@endsection
 
-        .container {
-            padding: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+@section('report_period')
+    Current Inventory Status as of {{ now()->format('M d, Y') }}
+@endsection
 
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 3px solid #059669;
-            padding-bottom: 15px;
-        }
-
-        .header h1 {
-            font-size: 24pt;
-            color: #059669;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            font-size: 10pt;
-            color: #666;
-            margin: 3px 0;
-        }
-
-        .filter-info {
-            background-color: #f0fdf4;
-            border-left: 4px solid #059669;
-            padding: 10px 12px;
-            margin-bottom: 20px;
-            font-size: 10pt;
-            line-height: 1.6;
-        }
-
-        .filter-info label {
-            font-weight: bold;
-            color: #059669;
-            width: 100px;
-            display: inline-block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        thead {
-            background-color: #059669;
-            color: white;
-            font-weight: bold;
-        }
-
-        th {
-            padding: 10px;
-            text-align: left;
-            font-size: 10pt;
-            border: 1px solid #059669;
-        }
-
-        td {
-            padding: 9px 10px;
-            border: 1px solid #ddd;
-            font-size: 10pt;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-
-        tbody tr:hover {
-            background-color: #f0fdf4;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-red {
-            color: #dc2626;
-        }
-
-        .text-orange {
-            color: #ea580c;
-        }
-
-        .totals-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 2px solid #059669;
-        }
-
-        .total-item {
-            text-align: right;
-        }
-
-        .total-item label {
-            font-weight: bold;
-            color: #059669;
-            display: block;
-            margin-bottom: 3px;
-            font-size: 10pt;
-        }
-
-        .total-item value {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #059669;
-            display: block;
-        }
-
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-            font-size: 9pt;
-            color: #666;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            font-size: 11pt;
-        }
-
-        .highlight-low {
-            background-color: #fee2e2;
-        }
-
-        .highlight-variance {
-            background-color: #fef3c7;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>INVENTORY REPORT</h1>
-            <p>Generated on {{ now()->format('F d, Y \a\t H:i A') }}</p>
+@section('executive_summary')
+    <div class="executive-summary">
+        <div class="summary-title">Executive Summary</div>
+        <div class="summary-metrics">
+            <div class="metric-item">
+                <div class="metric-label">Total Stock Items</div>
+                <div class="metric-value">{{ $finishedGoods->count() }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Total Stock Units</div>
+                <div class="metric-value">{{ number_format($totalStock) }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Total Inventory Value</div>
+                <div class="metric-value">
+                    @if(isset($reportCurrency))
+                        {{ currencySymbol($reportCurrency) }}{{ number_format($totalValue, 2) }}
+                    @else
+                        {{ number_format($totalValue, 2) }}
+                    @endif
+                </div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Total Variance Qty</div>
+                <div class="metric-value" style="@if($totalVariance != 0) color: #ea580c; @endif">
+                    {{ number_format($totalVariance) }}
+                </div>
+            </div>
         </div>
+    </div>
+@endsection
 
-        <!-- Filter Information -->
-        @if(isset($filters) && ($filters['customer'] !== 'All' || $filters['type'] !== 'All Items'))
-        <div class="filter-info">
-            <div><label>Customer:</label> <span>{{ $filters['customer'] ?? 'All' }}</span></div>
-            <div><label>Type:</label> <span>{{ $filters['type'] ?? 'All Items' }}</span></div>
+@section('filters_section')
+    <div class="filters-section">
+        <div class="filters-title">Filters Applied</div>
+        <div class="filter-badges">
+            <div class="filter-badge">
+                <strong>Customer:</strong> {{ $filters['customer'] ?? 'All Customers' }}
+            </div>
+            <div class="filter-badge">
+                <strong>Type:</strong> {{ $filters['type'] ?? 'All Items' }}
+            </div>
+            <div class="filter-badge">
+                <strong>As of Date:</strong> {{ now()->format('M d, Y') }}
+            </div>
         </div>
-        @endif
+    </div>
+@endsection
 
-        <!-- Data Table -->
-        @if($finishedGoods->count() > 0)
+@section('content')
+    @if($finishedGoods->count() > 0)
         <table>
             <thead>
                 <tr>
-                    <th style="width: 18%;">Product / Model</th>
-                    <th style="width: 14%;">Customer</th>
-                    <th style="width: 12%; text-align: right;">Beginning Count</th>
-                    <th style="width: 12%; text-align: right;">Ending Count</th>
-                    <th style="width: 12%; text-align: right;">Variance Qty</th>
-                    <th style="width: 14%; text-align: right;">Variance Amount</th>
-                    <th style="width: 14%; text-align: right;">End Amount</th>
+                    <th style="width: 16%;">Product / Model</th>
+                    <th style="width: 12%;">Customer</th>
+                    <th style="width: 8%;">Begin Count</th>
+                    <th style="width: 8%;">End Count</th>
+                    <th style="width: 7%;">UOM</th>
+                    <th style="width: 8%;">Variance Qty</th>
+                    <th style="width: 13%;">Variance Amount</th>
+                    <th style="width: 13%;">End Amount</th>
+                    <th style="width: 7%;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($finishedGoods as $item)
-                <tr class="
-                    @if($item->qty_actual_ending < ($item->product->min_stock ?? 0))
-                        highlight-low
-                    @elseif($item->qty_variance != 0)
-                        highlight-variance
-                    @endif
-                ">
-                    <td>{{ $item->product->model_name ?? $item->product->product_code ?? '—' }}</td>
-                    <td>{{ $item->product->customer ?? '—' }}</td>
-                    <td class="text-right">{{ number_format($item->qty_beginning) }}</td>
-                    <td class="text-right @if($item->qty_actual_ending < ($item->product->min_stock ?? 0)) text-red @endif">
-                        <strong>{{ number_format($item->qty_actual_ending) }}</strong>
-                        @if($item->qty_actual_ending < ($item->product->min_stock ?? 0)) ⚠ @endif
-                    </td>
-                    <td class="text-right @if($item->qty_variance != 0) text-orange @endif">
-                        {{ number_format($item->qty_variance) }}
-                    </td>
-                    <td class="text-right @if($item->amount_variance != 0) text-orange @endif">
-                        ₱{{ number_format($item->amount_variance, 2) }}
-                    </td>
-                    <td class="text-right">₱{{ number_format($item->amount_ending, 2) }}</td>
-                </tr>
+                    <tr>
+                        <td class="font-bold">{{ $item->product->model_name ?? $item->product->product_code ?? '—' }}</td>
+                        <td class="text-sm">{{ $item->product->customer ?? '—' }}</td>
+                        <td class="text-right">{{ number_format($item->qty_beginning) }}</td>
+                        <td class="text-right font-bold @if($item->qty_actual_ending < ($item->product->min_stock ?? 0)) text-red @endif">
+                            {{ number_format($item->qty_actual_ending) }}
+                        </td>
+                        <td class="text-center text-sm">{{ $item->product->uom ?? 'pcs' }}</td>
+                        <td class="text-right @if($item->qty_variance != 0) style="color: #ea580c; font-weight: 700;" @endif">
+                            {{ number_format($item->qty_variance) }}
+                        </td>
+                        <td class="text-right @if($item->amount_variance != 0) style="color: #ea580c; font-weight: 700;" @endif">
+                            {{ currencySymbol($item->product->currency ?? 'PHP') }}{{ number_format($item->amount_variance, 2) }}
+                        </td>
+                        <td class="text-right font-bold">{{ currencySymbol($item->product->currency ?? 'PHP') }}{{ number_format($item->amount_ending, 2) }}</td>
+                        <td class="text-center">
+                            @if($item->qty_actual_ending < ($item->product->min_stock ?? 0))
+                                <span class="badge badge-delayed">Low</span>
+                            @elseif($item->qty_variance != 0)
+                                <span class="badge badge-pending">Diff</span>
+                            @else
+                                <span class="badge badge-completed">OK</span>
+                            @endif
+                        </td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>
+    @else
+        <div style="text-align: center; padding: 30px; color: #999; font-size: 11pt; background: #f9fafb; border-radius: 4px;">
+            No inventory items found for the selected criteria.
+        </div>
+    @endif
+@endsection
 
-        <!-- Totals Section -->
-        <div class="totals-grid">
-            <div class="total-item">
-                <label>Total Stock:</label>
-                <value>{{ number_format($totalStock) }} units</value>
-            </div>
-            <div class="total-item">
-                <label>Total Value:</label>
-                <value>₱{{ number_format($totalValue, 2) }}</value>
-            </div>
-            <div class="total-item">
-                <label>Total Variance Qty:</label>
-                <value @if($totalVariance != 0) class="text-orange" @endif>{{ number_format($totalVariance) }}</value>
-            </div>
-            <div class="total-item">
-                <label>Total Variance Amount:</label>
-                <value @if($totalVarianceAmount != 0) class="text-orange" @endif>₱{{ number_format($totalVarianceAmount, 2) }}</value>
+@section('summary_footer')
+    @if($finishedGoods->count() > 0)
+        <div class="summary-footer">
+            <div class="totals-grid">
+                <div class="total-box">
+                    <div class="total-label">Total Stock Items</div>
+                    <div class="total-value">{{ $finishedGoods->count() }}</div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Total Stock Units</div>
+                    <div class="total-value">{{ number_format($totalStock) }}</div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Total Inventory Value</div>
+                    <div class="total-value">
+                        @if(isset($reportCurrency))
+                            {{ currencySymbol($reportCurrency) }}{{ number_format($totalValue, 2) }}
+                        @else
+                            {{ number_format($totalValue, 2) }}
+                        @endif
+                    </div>
+                </div>
+                <div class="total-box @if($totalVariance != 0) style="border-left-color: #ea580c; background: #fffbeb;" @endif">
+                    <div class="total-label @if($totalVariance != 0) style="color: #ea580c;" @endif">Total Variance Qty</div>
+                    <div class="total-value @if($totalVariance != 0) style="color: #ea580c;" @endif">{{ number_format($totalVariance) }}</div>
+                </div>
             </div>
         </div>
-
-        @else
-        <div class="no-data">
-            No inventory items found matching the selected criteria.
-        </div>
-        @endif
-
-        <!-- Footer -->
-        <div class="footer">
-            <p>This is a computer-generated report. No signature is required.</p>
-            <p style="margin-top: 5px;">{{ config('app.name') }} - Thesis System</p>
-        </div>
-    </div>
-
-</body>
-</html>
+    @endif
+@endsection

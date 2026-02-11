@@ -3,161 +3,327 @@
 @section('title', 'Create Job Order')
 @section('page-icon') <i class="fas fa-plus-circle"></i> @endsection
 @section('page-title', 'Create New Job Order')
-@section('page-description', 'Add a new job order for production')
+@section('page-description', 'Add a new production job order')
 
 @section('content')
-<div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-    <div class="p-6 border-b bg-gray-50">
-        <h3 class="text-lg font-semibold text-gray-800">New Job Order Form</h3>
-        <p class="text-sm text-gray-600 mt-1">Enter the details below. Fields marked with * are required.</p>
+<x-resource-form 
+    :action="route('job-orders.store')" 
+    method="POST" 
+    title="New Job Order" 
+    description="Enter the job order details below. Fields marked with * are required." 
+    :cancel="route('job-orders.index')" 
+    submit="Create Job Order">
+
+    {{-- INFO BANNER --}}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2 mb-6">
+        <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3"></i>
+            <div class="text-sm text-blue-800 space-y-1">
+                <p><strong>JO Number</strong> will be auto-generated (JO-YYYY-NNNN) — you can override it</p>
+                <p><strong>PO Number</strong> will be auto-generated if not provided</p>
+                <p>Select a product to auto-fill customer, model, description, etc.</p>
+            </div>
+        </div>
     </div>
 
-    <form action="{{ route('job-orders.store') }}" method="POST" class="p-6 space-y-8">
-        @csrf
+    {{-- SYSTEM INFO --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5 mb-6">
+        <div>
+            <label for="jo_number" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                JO Number
+            </label>
+            <input type="text" 
+                   id="jo_number" 
+                   name="jo_number" 
+                   value="{{ old('jo_number') }}" 
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-mono font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('jo_number') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('jo_number') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+        <div>
+            <label for="po_number" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                PO Number
+            </label>
+            <input type="text" 
+                   id="po_number" 
+                   name="po_number" 
+                   value="{{ old('po_number') }}" 
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-mono font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('po_number') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('po_number') 
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p> 
+            @enderror
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Date Encoded
+            </label>
+            <div class="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900">
+                {{ now()->format('M d, Y H:i') }}
+            </div>
+        </div>
+    </div>
 
-        <!-- Auto-generated info banner -->
-        <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg text-sm text-blue-800 space-y-1">
-            <p><strong>JO Number</strong> will be automatically generated (JO-YYYY-NNNN)</p>
-            <p><strong>PO Number</strong> will be automatically generated (PO-YYYY-MM-NNNN)</p>
-            <p><strong>Date Encoded</strong> will be set to today ({{ now()->format('M d, Y') }})</p>
-            <p><strong>Week Number</strong> will be calculated from Date Needed</p>
-            <p><strong>Encoded By</strong> will be set to current user</p>
-            <p><strong>Status</strong> will start as Pending</p>
+    {{-- MAIN FORM FIELDS --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {{-- PRODUCT SEARCHABLE DROPDOWN --}}
+        <div class="md:col-span-2">
+            <label for="product_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                Product <span class="text-red-500">*</span>
+            </label>
+            <select id="product_id" 
+                    name="product_id" 
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('product_id') border-red-500 ring-2 ring-red-200 @enderror">
+                <option value="">Search or select product...</option>
+                @foreach($products as $product)
+                <option value="{{ $product->id }}" 
+                        data-code="{{ $product->product_code }}"
+                        data-customer="{{ $product->customer_name }}"
+                        data-model="{{ $product->model_name }}"
+                        data-description="{{ $product->description }}"
+                        data-dimension="{{ $product->dimension }}"
+                        data-uom="{{ $product->uom }}">
+                    {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer_name }})
+                </option>
+                @endforeach
+            </select>
+            @error('product_id')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
         </div>
 
-        <!-- Suggested Identifiers (editable) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label for="jo_number" class="block text-sm font-medium text-gray-700 mb-1.5">JO Number</label>
-                <input type="text" id="jo_number" name="jo_number" value="{{ old('jo_number') }}"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('jo_number') border-red-500 @enderror" placeholder="Auto-suggested JO number, editable">
-                <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
-                @error('jo_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label for="po_number" class="block text-sm font-medium text-gray-700 mb-1.5">PO Number</label>
-                <input type="text" id="po_number" name="po_number" value="{{ old('po_number') }}"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('po_number') border-red-500 @enderror" placeholder="Auto-suggested PO number, editable">
-                <p class="mt-1.5 text-xs text-gray-500">Suggested code will be generated, you may edit to match company convention.</p>
-                @error('po_number') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+        {{-- QUANTITY --}}
+        <div>
+            <label for="quantity" class="block text-sm font-semibold text-gray-700 mb-2">
+                Quantity <span class="text-red-500">*</span>
+            </label>
+            <input type="number" 
+                   id="quantity" 
+                   name="quantity" 
+                   value="{{ old('quantity') }}" 
+                   min="1"
+                   required
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('quantity') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('quantity')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            <!-- Date Needed -->
-            <div>
-                <label for="date_needed" class="block text-sm font-medium text-gray-700 mb-1.5">Date Needed *</label>
-                <input type="date" name="date_needed" value="{{ old('date_needed', now()->format('Y-m-d')) }}"
-                       min="{{ now()->format('Y-m-d') }}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('date_needed') border-red-500 @enderror">
-                @error('date_needed') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Product -->
-            <div>
-                <label for="product_id" class="block text-sm font-medium text-gray-700 mb-1.5">Product *</label>
-                <select id="product_id" name="product_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('product_id') border-red-500 @enderror">
-                    <option value="">— Select Product —</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" data-uom="{{ $product->uom }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
-                            {{ $product->product_code }} - {{ $product->model_name }} ({{ $product->customer ?? 'N/A' }})
-                        </option>
-                    @endforeach
-                </select>
-                @error('product_id') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Quantity Ordered -->
-            <div>
-                <label for="qty_ordered" class="block text-sm font-medium text-gray-700 mb-1.5">Quantity Ordered *</label>
-                <input type="number" name="qty_ordered" value="{{ old('qty_ordered', 1) }}" min="1"
-                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('qty_ordered') border-red-500 @enderror">
-                @error('qty_ordered') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- UOM -->
-            <div>
-                <label for="uom" class="block text-sm font-medium text-gray-700 mb-1.5">UOM <span class="text-gray-500 text-xs">(Unit of Measure)</span> *</label>
-                <select id="uom" name="uom" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('uom') border-red-500 @enderror">
-                    <option value="">— Select Unit —</option>
-                    <option value="pcs" {{ old('uom', 'pcs') == 'pcs' ? 'selected' : '' }}>pcs – Pieces</option>
-                    <option value="set" {{ old('uom') == 'set' ? 'selected' : '' }}>set – Set</option>
-                    <option value="kg" {{ old('uom') == 'kg' ? 'selected' : '' }}>kg – Kilogram</option>
-                    <option value="g" {{ old('uom') == 'g' ? 'selected' : '' }}>g – Gram</option>
-                    <option value="m" {{ old('uom') == 'm' ? 'selected' : '' }}>m – Meter</option>
-                    <option value="cm" {{ old('uom') == 'cm' ? 'selected' : '' }}>cm – Centimeter</option>
-                    <option value="mm" {{ old('uom') == 'mm' ? 'selected' : '' }}>mm – Millimeter</option>
-                    <option value="l" {{ old('uom') == 'l' ? 'selected' : '' }}>L – Liter</option>
-                    <option value="ml" {{ old('uom') == 'ml' ? 'selected' : '' }}>mL – Milliliter</option>
-                    <option value="box" {{ old('uom') == 'box' ? 'selected' : '' }}>box – Box</option>
-                    <option value="pack" {{ old('uom') == 'pack' ? 'selected' : '' }}>pack – Pack</option>
-                </select>
-                @error('uom') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <!-- Remarks -->
-            <div class="md:col-span-2">
-                <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1.5">Remarks</label>
-                <textarea name="remarks" rows="3" placeholder="Additional notes or special instructions..."
-                          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('remarks') border-red-500 @enderror">{{ old('remarks') }}</textarea>
-                @error('remarks') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
+        {{-- DATE NEEDED --}}
+        <div>
+            <label for="date_needed" class="block text-sm font-semibold text-gray-700 mb-2">
+                Date Needed <span class="text-red-500">*</span>
+            </label>
+            <input type="date" 
+                   id="date_needed" 
+                   name="date_needed" 
+                   value="{{ old('date_needed') }}" 
+                   required
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('date_needed') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('date_needed')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
         </div>
 
-        <div class="flex justify-end gap-4 pt-6 border-t">
-            <a href="{{ route('job-orders.index') }}" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</a>
-            <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">Create Job Order</button>
+        {{-- STATUS --}}
+        <div>
+            <label for="jo_status" class="block text-sm font-semibold text-gray-700 mb-2">
+                Status
+            </label>
+            <select id="jo_status" 
+                    name="jo_status" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                <option value="Pending" {{ old('jo_status', 'Pending') == 'Pending' ? 'selected' : '' }}>Pending</option>
+                <option value="Approved" {{ old('jo_status') == 'Approved' ? 'selected' : '' }}>Approved</option>
+                <option value="JO Full" {{ old('jo_status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
+                <option value="Cancelled" {{ old('jo_status') == 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
+            </select>
         </div>
-    </form>
-</div>
 
+        {{-- AUTO-FILLED FIELDS --}}
+        <div>
+            <label for="customer_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                Customer Name
+            </label>
+            <input type="text" 
+                   id="customer_name" 
+                   name="customer_name" 
+                   value="{{ old('customer_name') }}" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('customer_name') border-red-500 @enderror" 
+                   placeholder="(auto-filled)">
+        </div>
+
+        <div>
+            <label for="model_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                Model Name
+            </label>
+            <input type="text" 
+                   id="model_name" 
+                   name="model_name" 
+                   value="{{ old('model_name') }}" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('model_name') border-red-500 @enderror" 
+                   placeholder="(auto-filled)">
+        </div>
+
+        <div class="md:col-span-2">
+            <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
+                Description
+            </label>
+            <textarea id="description" 
+                      name="description" 
+                      rows="2" 
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('description') border-red-500 @enderror" 
+                      placeholder="(auto-filled)">{{ old('description') }}</textarea>
+        </div>
+
+        <div>
+            <label for="dimension" class="block text-sm font-semibold text-gray-700 mb-2">
+                Dimension
+            </label>
+            <input type="text" 
+                   id="dimension" 
+                   name="dimension" 
+                   value="{{ old('dimension') }}" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('dimension') border-red-500 @enderror" 
+                   placeholder="(auto-filled)">
+        </div>
+
+        <div>
+            <label for="uom" class="block text-sm font-semibold text-gray-700 mb-2">
+                UOM
+            </label>
+            <input type="text" 
+                   id="uom" 
+                   name="uom" 
+                   value="{{ old('uom') }}" 
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('uom') border-red-500 @enderror" 
+                   placeholder="(auto-filled)">
+        </div>
+
+        {{-- REMARKS --}}
+        <div class="md:col-span-2">
+            <label for="remarks" class="block text-sm font-semibold text-gray-700 mb-2">
+                Remarks / Special Instructions
+            </label>
+            <textarea id="remarks" 
+                      name="remarks" 
+                      rows="3" 
+                      placeholder="Any special notes for production, scheduling, or quality control..."
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('remarks') border-red-500 ring-2 ring-red-200 @enderror">{{ old('remarks') }}</textarea>
+            @error('remarks')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
+        </div>
+
+    </div>
+
+</x-resource-form>
+@endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const productSelect = document.getElementById('product_id');
-    const uomSelect = document.getElementById('uom');
+document.addEventListener('DOMContentLoaded', () => {
+    const $productSelect = $('#product_id');
     
-    // Auto-populate UOM when product changes
-    productSelect.addEventListener('change', function() {
-        const selectedOption = productSelect.options[productSelect.selectedIndex];
-        const uom = selectedOption.getAttribute('data-uom');
-        
-        if (uom) {
-            uomSelect.value = uom;
+    // Initialize Select2 with search enabled
+    $productSelect.select2({
+        placeholder: "Search product by code, model or customer...",
+        allowClear: true,
+        width: '100%',
+        search: true,
+        matcher: function(params, data) {
+            // Allow searching by product code, model name, and customer
+            if ($.trim(params.term) === '') {
+                return data;
+            }
+            
+            const term = params.term.toLowerCase();
+            const text = (data.text || '').toLowerCase();
+            
+            if (text.indexOf(term) > -1) {
+                return data;
+            }
+            
+            return null;
         }
     });
-    
-    // Trigger on page load if product is already selected (form validation error case)
-    if (productSelect.value) {
-        const selectedOption = productSelect.options[productSelect.selectedIndex];
-        const uom = selectedOption.getAttribute('data-uom');
+
+    // When product is selected → auto-fill fields (use select2:select event)
+    $productSelect.on('select2:select', function(e) {
+        const selectedOption = e.params.data;
+        const $selectedElement = $(this).find('option[value="' + selectedOption.id + '"]');
         
-        if (uom && !uomSelect.value) {
-            uomSelect.value = uom;
+        if (selectedOption.id) {
+            $('#customer_name').val($selectedElement.data('customer') || '');
+            $('#model_name').val($selectedElement.data('model') || '');
+            $('#description').val($selectedElement.data('description') || '');
+            $('#dimension').val($selectedElement.data('dimension') || '');
+            $('#uom').val($selectedElement.data('uom') || '');
+
+            // Highlight autofilled fields with yellow background for 2.5 seconds
+            ['customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
+                const $field = $(`#${fieldId}`);
+                if ($field.val()) {
+                    $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
+                    setTimeout(() => {
+                        $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
+                    }, 2500);
+                }
+            });
+
+            // Visual feedback on dropdown
+            $productSelect.next('.select2-container').addClass('ring-2 ring-green-500');
+            setTimeout(() => $productSelect.next('.select2-container').removeClass('ring-2 ring-green-500'), 1500);
         }
-    }
+    });
 
-    // Fetch suggested JO and PO numbers (PO depends on date_needed)
-    const joInput = document.getElementById('jo_number');
-    const poInput = document.getElementById('po_number');
-    const dateNeeded = document.querySelector('input[name="date_needed"]');
+    // Clear fields when product is cleared
+    $productSelect.on('select2:clear', function() {
+        $('#customer_name, #model_name, #description, #dimension, #uom').val('');
+    });
 
-    async function fetchJoPo() {
-        try {
-            const date = dateNeeded?.value || '';
-            const resp = await fetch('/api/sequences/next?type=job_order' + (date ? '&date=' + encodeURIComponent(date) : ''));
-            if (!resp.ok) return;
-            const data = await resp.json();
-            if (joInput && !joInput.value && data.jo_number) joInput.value = data.jo_number;
-            if (poInput && !poInput.value && data.po_number) poInput.value = data.po_number;
-        } catch (e) {
-            console.error('Sequence fetch failed', e);
+    // Pre-fill if old input exists (after validation fail)
+    @if(old('product_id'))
+        $productSelect.val('{{ old('product_id') }}').trigger('change');
+        // Manually trigger autofill
+        const $oldOption = $productSelect.find('option[value="{{ old('product_id') }}"]');
+        if ($oldOption.length) {
+            $('#customer_name').val($oldOption.data('customer') || '');
+            $('#model_name').val($oldOption.data('model') || '');
+            $('#description').val($oldOption.data('description') || '');
+            $('#dimension').val($oldOption.data('dimension') || '');
+            $('#uom').val($oldOption.data('uom') || '');
         }
-    }
+    @endif
 
-    // Fetch on load and when date_needed changes
-    fetchJoPo();
-    dateNeeded?.addEventListener('change', fetchJoPo);
+    // Auto-submit on Enter
+    document.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('keypress', e => {
+            if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                el.closest('form').querySelector('button[type="submit"]').click();
+            }
+        });
+    });
 });
 </script>
 @endsection

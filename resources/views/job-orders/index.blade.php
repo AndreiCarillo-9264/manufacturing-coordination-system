@@ -1,156 +1,201 @@
+{{-- resources/views/job-orders/index.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Job Orders')
-@section('page-icon') <i class="fas fa-clipboard-list"></i> @endsection
+@section('page-icon') <i class="fas fa-tasks"></i> @endsection
 @section('page-title', 'Job Orders')
-@section('page-description', 'Manage all job orders')
+@section('page-description', 'Manage production job orders')
 
 @section('content')
 <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-    <div class="p-6 border-b bg-gray-50 flex items-center justify-between">
-        <div>
-            <h3 class="text-lg font-semibold text-gray-800">All Job Orders</h3>
-            <p class="text-sm text-gray-600 mt-1">Sales and production orders</p>
-        </div>
-        @can('create', App\Models\JobOrder::class)
-        <a href="{{ route('job-orders.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-            <i class="fas fa-plus mr-2"></i> New Job Order
-        </a>
-        @endcan
-    </div>
+    <x-page-header title="All Job Orders" description="Production orders and scheduling">
+        <x-slot name="actions">
+            @can('create', App\Models\JobOrder::class)
+            <a href="{{ route('job-orders.create') }}" 
+               class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm hover:shadow">
+                <i class="fas fa-plus mr-2"></i> Create Job Order
+            </a>
+            @endcan
+
+            <a href="{{ route('job-orders.export') }}"
+               class="inline-flex items-center px-4 py-2 border border-green-600 rounded-lg text-sm font-medium text-green-600 bg-white hover:bg-green-50 transition-colors shadow-sm">
+                <i class="fas fa-file-export mr-2"></i> Export CSV
+            </a>
+
+            <form id="jo-import-form" action="{{ route('job-orders.import') }}" method="POST" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input id="jo-import-file" type="file" name="file" accept=".csv,.xlsx" onchange="document.getElementById('jo-import-form').submit()">
+            </form>
+            <button type="button" 
+                    onclick="document.getElementById('jo-import-file').click()" 
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">
+                <i class="fas fa-file-import mr-2"></i> Import
+            </button>
+        </x-slot>
+    </x-page-header>
 
     {{-- SEARCH & FILTER --}}
-    <div class="p-6 bg-gray-50 border-b">
-        <form method="GET" action="{{ route('job-orders.index') }}" class="space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div class="p-6 bg-gradient-to-br from-gray-50 to-gray-100/50 border-b border-gray-200">
+        <form method="GET" action="{{ route('job-orders.index') }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{-- Search Input --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <label class="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Search</label>
                     <div class="relative">
-                        <input type="text" name="search" value="{{ request('search') }}" 
-                               placeholder="J.O. Number or Product..."
-                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400 text-sm"></i>
+                        </div>
+                        <input type="text" 
+                               name="search" 
+                               value="{{ request('search') }}" 
+                               placeholder="JO#, PO#, product code..."
+                               class="block w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400">
                     </div>
                 </div>
 
+                {{-- Status Filter --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">JO Status</label>
-                    <select name="fulfillment_status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                        <option value="">All JO Status</option>
-                        <option value="JO Full" {{ request('fulfillment_status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
-                        <option value="Balance" {{ request('fulfillment_status') == 'Balance' ? 'selected' : '' }}>Balance</option>
-                        <option value="Excess" {{ request('fulfillment_status') == 'Excess' ? 'selected' : '' }}>Excess</option>
+                    <label class="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Status</label>
+                    <select name="status" class="block w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        <option value="">All Statuses</option>
+                        <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="Approved" {{ request('status') == 'Approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="JO Full" {{ request('status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
+                        <option value="Cancelled" {{ request('status') == 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
                     </select>
                 </div>
 
+                {{-- Product Filter --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                        <option value="">All Status</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="in_progress" {{ request('status') == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Product</label>
-                    <select name="product_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <label class="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Product</label>
+                    <select name="product_id" class="block w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                         <option value="">All Products</option>
                         @foreach($products as $product)
                         <option value="{{ $product->id }}" {{ request('product_id') == $product->id ? 'selected' : '' }}>
-                            {{ $product->model_name ?? $product->product_code }}
+                            {{ $product->product_code }} - {{ $product->model_name }}
                         </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-                    <input type="date" name="date_from" value="{{ request('date_from') }}" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                {{-- Action Buttons --}}
+                <div class="flex items-end gap-2">
+                    <button type="submit" 
+                            class="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                        <i class="fas fa-filter mr-2 text-xs"></i>
+                        Filter
+                    </button>
+                    @if(request()->hasAny(['search', 'status', 'product_id']))
+                    <a href="{{ route('job-orders.index') }}" 
+                       class="inline-flex items-center justify-center px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-all duration-200"
+                       title="Clear filters">
+                        <i class="fas fa-times text-xs"></i>
+                    </a>
+                    @endif
                 </div>
-            </div>
-
-            <div class="flex justify-end gap-4 mt-2">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md text-sm font-medium transition">
-                    <i class="fas fa-filter mr-2"></i> Filter
-                </button>
-                <a href="{{ route('job-orders.index') }}" class="text-gray-600 hover:text-gray-800 text-sm flex items-center gap-1">
-                    Clear Filters
-                </a>
             </div>
         </form>
     </div>
 
-    <!-- Scrollable table with right scroll hint -->
-    <div class="overflow-x-auto relative">
-        <!-- Scroll indicator gradient -->
-        <div class="absolute right-0 top-0 bottom-0 w-16 pointer-events-none bg-gradient-to-l from-white via-white/70 to-transparent z-30"></div>
-
+    {{-- TABLE --}}
+    <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50 sticky top-0 z-20">
+            <thead class="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Status</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">JO Number</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Needed</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">PO Number</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Product Code</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Customer</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Dimension</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">UOM</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Encoded By</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Remarks</th>
-                    <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        JO Number
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        PO Number
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Product
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Customer
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Quantity
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Balance
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Date Needed
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                        Status
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
+                        Actions
+                    </th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
                 @forelse($jobOrders as $jo)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-4 text-sm font-medium whitespace-nowrap">
-                        @if($jo->fulfillment_status)
-                        <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full
-                            {{ $jo->fulfillment_status === 'JO Full' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' : '' }}
-                            {{ $jo->fulfillment_status === 'Balance' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' : '' }}
-                            {{ $jo->fulfillment_status === 'Excess'  ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' : '' }}">
-                            {{ $jo->fulfillment_status }}
+                <tr class="hover:bg-blue-50/30 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-sm font-mono font-semibold">
+                            {{ $jo->jo_number }}
                         </span>
-                        @else
-                        <span class="text-gray-400">—</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ $jo->po_number ?? '—' }}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-gray-900">{{ $jo->product_code }}</div>
+                        <div class="text-xs text-gray-500 max-w-xs" title="{{ $jo->description }}">{{ Str::limit($jo->model_name ?? $jo->description ?? '—', 30) }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ $jo->customer_name ?? '—' }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <div class="text-sm font-semibold text-gray-900">{{ number_format($jo->quantity) }}</div>
+                        <div class="text-xs text-gray-500">{{ strtoupper($jo->uom ?? '—') }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <div class="text-sm font-semibold {{ $jo->jo_balance > 0 ? 'text-orange-600' : 'text-green-600' }}">
+                            {{ number_format($jo->jo_balance) }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</div>
+                        @if($jo->isOverdue)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> Overdue
+                        </span>
                         @endif
                     </td>
-                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $jo->jo_number }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->po_number ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm font-mono text-gray-900 whitespace-nowrap">{{ $jo->product->product_code ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->customer ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->model_name ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($jo->product->description ?? '', 35) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->dimension ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap font-semibold">{{ number_format($jo->qty_ordered ?? 0) }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->product->uom ?? $jo->uom ?? '—' }}</td> 
-                    <td class="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{{ $jo->encodedBy?->name ?? '—' }}</td>
-                    <td class="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{{ Str::limit($jo->remarks ?? '', 30) }}</td>
-                    <td class="px-5 py-4 text-sm whitespace-nowrap sticky right-0 bg-white shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] z-10">
-                        <div class="flex items-center gap-3 px-2">
-                            <a href="{{ route('job-orders.show', $jo) }}" class="text-blue-600 hover:text-blue-800 transition" title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        @php
+                        $statusColors = [
+                            'Pending' => 'bg-yellow-100 text-yellow-800',
+                            'Partial' => 'bg-blue-100 text-blue-800',
+                            'JO Full' => 'bg-green-100 text-green-800',
+                            'Cancelled' => 'bg-red-100 text-red-800',
+                        ];
+                        $color = $statusColors[$jo->jo_status] ?? 'bg-gray-100 text-gray-800';
+                        @endphp
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $color }}">
+                            {{ $jo->jo_status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 bg-white shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.08)]">
+                        <div class="flex items-center justify-center gap-3">
                             @can('update', $jo)
-                            <a href="{{ route('job-orders.edit', $jo) }}" class="text-amber-600 hover:text-amber-800 transition" title="Edit">
+                            <a href="{{ route('job-orders.edit', $jo) }}" 
+                               class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors" 
+                               title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
                             @endcan
                             @can('delete', $jo)
-                            <form action="{{ route('job-orders.destroy', $jo) }}" method="POST" class="inline">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800 transition" title="Delete" 
-                                        onclick="return confirm('Delete this job order? This will also delete related records.')">
+                            <form action="{{ route('job-orders.destroy', $jo) }}" method="POST" class="inline" onsubmit="return confirm('Delete this job order?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors" 
+                                        title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -160,17 +205,46 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="14" class="px-6 py-16 text-center text-gray-500">
-                        No job orders found
+                    <td colspan="9" class="px-6 py-16 text-center">
+                        <div class="flex flex-col items-center justify-center text-gray-500">
+                            <i class="fas fa-tasks text-4xl mb-3 text-gray-300"></i>
+                            <p class="text-lg font-medium">No job orders found</p>
+                            @if(request()->hasAny(['search', 'status', 'product_id']))
+                            <p class="text-sm mt-1">Try adjusting your filters</p>
+                            @else
+                            <p class="text-sm mt-1">Create your first job order to get started</p>
+                            @endif
+                        </div>
                     </td>
                 </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-
-    <div class="p-6 border-t">
+    
+    {{-- PAGINATION --}}
+    @if($jobOrders->hasPages())
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
         {{ $jobOrders->links() }}
     </div>
+    @endif
 </div>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form on Enter key
+    const searchInputs = document.querySelectorAll('input[name="search"]');
+    searchInputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.closest('form').submit();
+            }
+        });
+    });
+});
+</script>
+
 @endsection

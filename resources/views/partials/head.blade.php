@@ -12,3 +12,5 @@
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
+<!-- Date and Time Restrictions Script -->
+<script src="{{ asset('js/date-time-restrictions.js') }}"></script>

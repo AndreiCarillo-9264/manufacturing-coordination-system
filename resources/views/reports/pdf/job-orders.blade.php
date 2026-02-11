@@ -1,275 +1,135 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Job Orders Report - {{ now()->format('Y-m-d') }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
+@extends('reports.layouts.pdf-layout')
 
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 11pt;
-            color: #333;
-            line-height: 1.4;
-        }
+@section('report_title')
+    Job Orders Report
+@endsection
 
-        .container {
-            padding: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+@section('report_period')
+    {{ $filters['date_from'] ?? 'All Records' }} to {{ $filters['date_to'] ?? 'Present' }}
+@endsection
 
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 3px solid #1e40af;
-            padding-bottom: 15px;
-        }
-
-        .header h1 {
-            font-size: 24pt;
-            color: #1e40af;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            font-size: 10pt;
-            color: #666;
-            margin: 3px 0;
-        }
-
-        .filter-info {
-            background-color: #f3f4f6;
-            border-left: 4px solid #1e40af;
-            padding: 10px 12px;
-            margin-bottom: 20px;
-            font-size: 10pt;
-            line-height: 1.6;
-        }
-
-        .filter-info label {
-            font-weight: bold;
-            color: #1e40af;
-            width: 100px;
-            display: inline-block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        thead {
-            background-color: #1e40af;
-            color: white;
-            font-weight: bold;
-        }
-
-        th {
-            padding: 10px;
-            text-align: left;
-            font-size: 10pt;
-            border: 1px solid #1e40af;
-        }
-
-        td {
-            padding: 9px 10px;
-            border: 1px solid #ddd;
-            font-size: 10pt;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-
-        tbody tr:hover {
-            background-color: #f0f4ff;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .status-pending {
-            background-color: #fef3c7;
-            color: #92400e;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 9pt;
-            display: inline-block;
-        }
-
-        .status-approved {
-            background-color: #dbeafe;
-            color: #1e40af;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 9pt;
-            display: inline-block;
-        }
-
-        .status-in_progress {
-            background-color: #ede9fe;
-            color: #6b21a8;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 9pt;
-            display: inline-block;
-        }
-
-        .status-completed {
-            background-color: #dcfce7;
-            color: #15803d;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 9pt;
-            display: inline-block;
-        }
-
-        .status-cancelled {
-            background-color: #fee2e2;
-            color: #991b1b;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 9pt;
-            display: inline-block;
-        }
-
-        .totals {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 2px solid #1e40af;
-            display: flex;
-            justify-content: flex-end;
-            gap: 40px;
-        }
-
-        .total-item {
-            text-align: right;
-        }
-
-        .total-item label {
-            font-weight: bold;
-            color: #1e40af;
-            display: block;
-            margin-bottom: 3px;
-            font-size: 10pt;
-        }
-
-        .total-item value {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #1e40af;
-            display: block;
-        }
-
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-            font-size: 9pt;
-            color: #666;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            font-size: 11pt;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>JOB ORDERS REPORT</h1>
-            <p>Generated on {{ now()->format('F d, Y \a\t H:i A') }}</p>
+@section('executive_summary')
+    <div class="executive-summary">
+        <div class="summary-title">Executive Summary</div>
+        <div class="summary-metrics">
+            <div class="metric-item">
+                <div class="metric-label">Total Job Orders</div>
+                <div class="metric-value">{{ $jobOrders->count() }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Total Quantity</div>
+                <div class="metric-value">{{ number_format($totalQty) }}</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Total Amount</div>
+                <div class="metric-value">
+                    @if(isset($reportCurrency))
+                        {{ currencySymbol($reportCurrency) }}{{ number_format($totalAmount, 2) }}
+                    @else
+                        {{ number_format($totalAmount, 2) }}
+                    @endif
+                </div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">Pending JOs</div>
+                <div class="metric-value">{{ $jobOrders->where('status', 'pending')->count() }}</div>
+            </div>
         </div>
+    </div>
+@endsection
 
-        <!-- Filter Information -->
-        @if(isset($filters) && ($filters['customer'] !== 'All' || $filters['status'] !== 'All' || $filters['date_from'] !== 'Start' || $filters['date_to'] !== 'End'))
-        <div class="filter-info">
-            <div><label>Customer:</label> <span>{{ $filters['customer'] ?? 'All' }}</span></div>
-            <div><label>Status:</label> <span>{{ ucfirst($filters['status'] ?? 'All') }}</span></div>
-            <div><label>Period:</label> <span>{{ $filters['date_from'] ?? 'Start' }} to {{ $filters['date_to'] ?? 'End' }}</span></div>
+@section('filters_section')
+    <div class="filters-section">
+        <div class="filters-title">Filters Applied</div>
+        <div class="filter-badges">
+            <div class="filter-badge">
+                <strong>Customer:</strong> {{ $filters['customer'] ?? 'All Customers' }}
+            </div>
+            <div class="filter-badge">
+                <strong>Status:</strong> {{ $filters['status'] ?? 'All Statuses' }}
+            </div>
+            <div class="filter-badge">
+                <strong>Date From:</strong> {{ $filters['date_from'] ?? 'N/A' }}
+            </div>
+            <div class="filter-badge">
+                <strong>Date To:</strong> {{ $filters['date_to'] ?? 'N/A' }}
+            </div>
         </div>
-        @endif
+    </div>
+@endsection
 
-        <!-- Data Table -->
-        @if($jobOrders->count() > 0)
+@section('content')
+    @if($jobOrders->count() > 0)
         <table>
             <thead>
                 <tr>
-                    <th style="width: 10%;">JO Number</th>
-                    <th style="width: 10%;">PO Number</th>
-                    <th style="width: 18%;">Product / Model</th>
-                    <th style="width: 15%;">Customer</th>
-                    <th style="width: 8%; text-align: right;">Qty</th>
-                    <th style="width: 6%;">UoM</th>
-                    <th style="width: 12%;">Date Needed</th>
-                    <th style="width: 12%;">Status</th>
-                    <th style="width: 12%; text-align: right;">Amount</th>
+                    <th style="width: 8%;">JO Number</th>
+                    <th style="width: 8%;">PO Number</th>
+                    <th style="width: 14%;">Product / Model</th>
+                    <th style="width: 12%;">Customer</th>
+                    <th style="width: 7%;">Qty</th>
+                    <th style="width: 5%;">UOM</th>
+                    <th style="width: 9%;">Date Needed</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 11%;">Unit Price</th>
+                    <th style="width: 10%;">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($jobOrders as $jo)
-                <tr>
-                    <td>{{ $jo->jo_number }}</td>
-                    <td>{{ $jo->po_number ?? '—' }}</td>
-                    <td>{{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }}</td>
-                    <td>{{ $jo->product->customer ?? '—' }}</td>
-                    <td class="text-right">{{ number_format($jo->qty) }}</td>
-                    <td>{{ $jo->uom }}</td>
-                    <td>{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</td>
-                    <td class="text-center">
-                        <span class="status-{{ $jo->status }}">{{ ucfirst(str_replace('_', ' ', $jo->status)) }}</span>
-                    </td>
-                    <td class="text-right">₱{{ number_format($jo->qty * $jo->product->selling_price, 2) }}</td>
-                </tr>
+                    <tr>
+                        <td class="font-bold">{{ $jo->jo_number }}</td>
+                        <td>{{ $jo->po_number ?? '—' }}</td>
+                        <td>{{ $jo->product->model_name ?? $jo->product->product_code ?? '—' }}</td>
+                        <td class="text-sm">{{ $jo->product->customer ?? '—' }}</td>
+                        <td class="text-right font-bold">{{ number_format($jo->qty) }}</td>
+                        <td class="text-center">{{ $jo->uom }}</td>
+                        <td class="text-center">{{ $jo->date_needed?->format('M d, Y') ?? '—' }}</td>
+                        <td>
+                            <span class="badge badge-{{ strtolower(str_replace(' ', '-', $jo->status)) }}">
+                                {{ ucfirst(str_replace('_', ' ', $jo->status)) }}
+                            </span>
+                        </td>
+                        <td class="text-right text-sm">{{ currencySymbol($jo->product->currency ?? 'PHP') }}{{ number_format($jo->product->selling_price ?? 0, 2) }}</td>
+                        <td class="text-right font-bold">{{ currencySymbol($jo->product->currency ?? 'PHP') }}{{ number_format(($jo->qty * ($jo->product->selling_price ?? 0)), 2) }}</td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>
+    @else
+        <div style="text-align: center; padding: 30px; color: #999; font-size: 11pt; background: #f9fafb; border-radius: 4px;">
+            No job orders found for the selected criteria.
+        </div>
+    @endif
+@endsection
 
-        <!-- Totals Section -->
-        <div class="totals">
-            <div class="total-item">
-                <label>Total Quantity:</label>
-                <value>{{ number_format($totalQty) }} units</value>
+@section('summary_footer')
+    @if($jobOrders->count() > 0)
+        <div class="summary-footer">
+            <div class="totals-grid">
+                <div class="total-box">
+                    <div class="total-label">Total Job Orders</div>
+                    <div class="total-value">{{ $jobOrders->count() }}</div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Total Quantity</div>
+                    <div class="total-value">{{ number_format($totalQty) }}</div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Total Amount</div>
+                    <div class="total-value">
+                        @if(isset($reportCurrency))
+                            {{ currencySymbol($reportCurrency) }}{{ number_format($totalAmount, 2) }}
+                        @else
+                            {{ number_format($totalAmount, 2) }}
+                        @endif
+                    </div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Pending Orders</div>
+                    <div class="total-value">{{ $jobOrders->where('status', 'pending')->count() }}</div>
+                </div>
             </div>
-            <div class="total-item">
-                <label>Total Amount:</label>
-                <value>₱{{ number_format($totalAmount, 2) }}</value>
-            </div>
         </div>
-
-        @else
-        <div class="no-data">
-            No job orders found matching the selected criteria.
-        </div>
-        @endif
-
-        <!-- Footer -->
-        <div class="footer">
-            <p>This is a computer-generated report. No signature is required.</p>
-            <p style="margin-top: 5px;">{{ config('app.name') }} - Thesis System</p>
-        </div>
-    </div>
-
-</body>
-</html>
+    @endif
+@endsection

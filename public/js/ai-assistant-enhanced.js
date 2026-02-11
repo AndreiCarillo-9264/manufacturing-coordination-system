@@ -157,6 +157,7 @@ class AIAssistant {
         this.showTypingIndicator();
 
         try {
+            console.log('Sending message:', message);
             const response = await fetch('/ai-assistant/chat', {
                 method: 'POST',
                 headers: {
@@ -170,7 +171,10 @@ class AIAssistant {
                 }),
             });
 
+            console.log('Response status:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
+            
             this.hideTypingIndicator();
 
             if (data.success) {
@@ -179,12 +183,14 @@ class AIAssistant {
                     this.currentConversationId = data.conversation_id;
                 }
             } else {
-                this.addMessage('ai', data.message || 'Sorry, an error occurred. Please try again.');
+                const errorMsg = data.error || data.message || 'Sorry, an error occurred. Please try again.';
+                console.error('AI Error:', errorMsg);
+                this.addMessage('ai', errorMsg || 'Failed to get response. Check browser console for details.');
             }
         } catch (error) {
             console.error('Chat error:', error);
             this.hideTypingIndicator();
-            this.addMessage('ai', 'Connection error. Please check your internet connection.');
+            this.addMessage('ai', 'Connection error: ' + error.message + '. Check browser console for details.');
         }
     }
 
@@ -331,5 +337,7 @@ class AIAssistant {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new AIAssistant());
+document.addEventListener('DOMContentLoaded', () => {
+    window.aiAssistant = new AIAssistant();
+});
 // ===CHATBOT: Enhanced Floating Widget Implementation (END)===
