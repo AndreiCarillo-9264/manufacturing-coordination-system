@@ -293,7 +293,7 @@ class JobOrderController extends Controller
     {
         $this->authorize('viewAny', JobOrder::class);
 
-        $data = JobOrder::with('product')->get();
+        $data = JobOrder::with(['product', 'encodedByUser', 'approvedByUser'])->get();
         
         $headers = [
             'Content-Type' => 'text/csv; charset=utf-8',
@@ -320,8 +320,8 @@ class JobOrderController extends Controller
                     $row->date_needed?->format('Y-m-d') ?? '',
                     $row->date_encoded?->format('Y-m-d H:i:s') ?? '',
                     $row->date_approved?->format('Y-m-d H:i:s') ?? '',
-                    $row->encoded_by ?? '',
-                    $row->approved_by ?? '',
+                    ($row->encodedByUser?->name) ?? $row->encoded_by ?? '',
+                    ($row->approvedByUser?->name) ?? $row->approved_by ?? '',
                 ]);
             }
             fclose($file);

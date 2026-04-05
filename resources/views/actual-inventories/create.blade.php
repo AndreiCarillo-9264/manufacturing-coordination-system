@@ -180,12 +180,12 @@
             <label for="product_code" class="block text-sm font-semibold text-gray-700 mb-2">
                 Product Code
             </label>
-            <input type="text" 
-                   id="product_code" 
-                   name="product_code" 
-                   value="{{ old('product_code') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('product_code') border-red-500 ring-2 ring-red-200 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="product_code" 
+                     name="product_code" 
+                     value="{{ old('product_code') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('product_code') border-red-500 ring-2 ring-red-200 @enderror" 
+                     readonly>
         </div>
 
         {{-- CUSTOMER NAME (AUTO-FILL) --}}
@@ -193,12 +193,12 @@
             <label for="customer_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Customer Name
             </label>
-            <input type="text" 
-                   id="customer_name" 
-                   name="customer_name" 
-                   value="{{ old('customer_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('customer_name') border-red-500 ring-2 ring-red-200 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="customer_name" 
+                     name="customer_name" 
+                     value="{{ old('customer_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('customer_name') border-red-500 ring-2 ring-red-200 @enderror" 
+                     readonly>
         </div>
 
         {{-- MODEL NAME (AUTO-FILL) --}}
@@ -206,12 +206,12 @@
             <label for="model_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Model Name
             </label>
-            <input type="text" 
-                   id="model_name" 
-                   name="model_name" 
-                   value="{{ old('model_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('model_name') border-red-500 ring-2 ring-red-200 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="model_name" 
+                     name="model_name" 
+                     value="{{ old('model_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('model_name') border-red-500 ring-2 ring-red-200 @enderror" 
+                     readonly>
         </div>
 
         {{-- DESCRIPTION (AUTO-FILL) --}}
@@ -223,7 +223,7 @@
                       name="description" 
                       rows="2" 
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('description') border-red-500 ring-2 ring-red-200 @enderror" 
-                      placeholder="(auto-filled)">{{ old('description') }}</textarea>
+                      readonly>{{ old('description') }}</textarea>
         </div>
 
         {{-- DIMENSION (AUTO-FILL) --}}
@@ -231,12 +231,12 @@
             <label for="dimension" class="block text-sm font-semibold text-gray-700 mb-2">
                 Dimension
             </label>
-            <input type="text" 
-                   id="dimension" 
-                   name="dimension" 
-                   value="{{ old('dimension') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('dimension') border-red-500 ring-2 ring-red-200 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="dimension" 
+                     name="dimension" 
+                     value="{{ old('dimension') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('dimension') border-red-500 ring-2 ring-red-200 @enderror" 
+                     readonly>
         </div>
 
         {{-- UOM (AUTO-FILL) --}}
@@ -244,12 +244,12 @@
             <label for="uom" class="block text-sm font-semibold text-gray-700 mb-2">
                 Unit of Measure (UOM)
             </label>
-            <input type="text" 
-                   id="uom" 
-                   name="uom" 
-                   value="{{ old('uom') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('uom') border-red-500 ring-2 ring-red-200 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="uom" 
+                     name="uom" 
+                     value="{{ old('uom') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('uom') border-red-500 ring-2 ring-red-200 @enderror" 
+                     readonly>
         </div>
 
     </div>
@@ -289,78 +289,67 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endpush
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const $productSelect = $('#product_id');
     
-    // Initialize Select2 for searchable product dropdown
+    // Initialize Select2 for searchable product dropdown (always searchable)
     $productSelect.select2({
         placeholder: 'Search by product code, model, or customer...',
         allowClear: true,
         width: '100%',
-        search: true,
+        minimumResultsForSearch: 0,
         matcher: function(params, data) {
-            if ($.trim(params.term) === '') {
-                return data;
-            }
-            if (typeof data.text === 'undefined') {
-                return null;
-            }
+            if ($.trim(params.term) === '') return data;
+            if (typeof data.text === 'undefined') return null;
             const term = params.term.toLowerCase();
             const text = data.text.toLowerCase();
-            const code = ($(data.element).data('product-code') || '').toLowerCase();
-            const model = ($(data.element).data('model-name') || '').toLowerCase();
-            const customer = ($(data.element).data('customer-name') || '').toLowerCase();
-            
-            if (text.indexOf(term) > -1 || code.indexOf(term) > -1 || model.indexOf(term) > -1 || customer.indexOf(term) > -1) {
-                return data;
-            }
+            const code = (data.element && $(data.element).data('product-code') || '').toString().toLowerCase();
+            const model = (data.element && $(data.element).data('model-name') || '').toString().toLowerCase();
+            const customer = (data.element && $(data.element).data('customer-name') || '').toString().toLowerCase();
+            if (text.indexOf(term) > -1 || code.indexOf(term) > -1 || model.indexOf(term) > -1 || customer.indexOf(term) > -1) return data;
             return null;
         }
     });
 
-    // Auto-fill fields on product selection (use select2:select event)
-    $productSelect.on('select2:select', function(e) {
-        const selectedOption = e.params.data;
-        const $selectedElement = $(this).find('option[value="' + selectedOption.id + '"]');
-        
-        if (selectedOption.id) {
-            $('#product_code').val($selectedElement.data('product-code') || '');
-            $('#customer_name').val($selectedElement.data('customer-name') || '');
-            $('#model_name').val($selectedElement.data('model-name') || '');
-            $('#description').val($selectedElement.data('description') || '');
-            $('#dimension').val($selectedElement.data('dimension') || '');
-            $('#uom').val($selectedElement.data('uom') || '');
-
-            // Highlight autofilled fields with yellow background for 2.5 seconds
-            ['product_code', 'customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
-                const $field = $(`#${fieldId}`);
-                if ($field.val()) {
-                    $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    setTimeout(() => {
-                        $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    }, 2500);
-                }
-            });
-
-            // Visual feedback
-            $productSelect.next('.select2-container').addClass('ring-2 ring-green-500');
-            setTimeout(() => $productSelect.next('.select2-container').removeClass('ring-2 ring-green-500'), 1500);
+    function fillProductFields($select) {
+        const $opt = $select.find('option:selected');
+        const val = $opt.val();
+        if (!val) {
+            $('#product_code, #customer_name, #model_name, #description, #dimension, #uom').val('');
+            return;
         }
-    });
+
+        const prodCode = $opt.attr('data-product-code') || $opt.data('product-code') || '';
+        const custName = $opt.attr('data-customer-name') || $opt.data('customer-name') || '';
+        const modelName = $opt.attr('data-model-name') || $opt.data('model-name') || '';
+        const desc = $opt.attr('data-description') || $opt.data('description') || '';
+        const dim = $opt.attr('data-dimension') || $opt.data('dimension') || '';
+        const uomVal = $opt.attr('data-uom') || $opt.data('uom') || '';
+
+        $('#product_code').val(prodCode);
+        $('#customer_name').val(custName);
+        $('#model_name').val(modelName);
+        $('#description').val(desc);
+        $('#dimension').val(dim);
+        $('#uom').val(uomVal);
+
+        ['product_code', 'customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
+            const $field = $(`#${fieldId}`);
+            if ($field.val()) {
+                $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
+                setTimeout(() => $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300'), 2500);
+            }
+        });
+    }
+
+    $productSelect.on('change select2:select', function() { fillProductFields($(this)); });
+    $productSelect.on('select2:clear', function() { $('#product_code, #customer_name, #model_name, #description, #dimension, #uom').val(''); });
 
     // Pre-populate fields if product is already selected
-    const selectedOption = $productSelect.find('option:selected');
-    if (selectedOption.val()) {
-        $('#product_code').val(selectedOption.data('product-code') || '');
-        $('#customer_name').val(selectedOption.data('customer-name') || '');
-        $('#model_name').val(selectedOption.data('model-name') || '');
-        $('#description').val(selectedOption.data('description') || '');
-        $('#dimension').val(selectedOption.data('dimension') || '');
-        $('#uom').val(selectedOption.data('uom') || '');
-    }
+    fillProductFields($productSelect);
 
     // Fetch suggested tag number
     (async function() {
@@ -405,4 +394,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-@endsection
+@endpush

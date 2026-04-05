@@ -128,6 +128,23 @@
             @enderror
         </div>
 
+        {{-- DELIVERY TIME --}}
+        <div>
+            <label for="delivery_time" class="block text-sm font-semibold text-gray-700 mb-2">
+                Delivery Time
+            </label>
+            <input type="time"
+                   id="delivery_time"
+                   name="delivery_time"
+                   value="{{ old('delivery_time') }}"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('delivery_time') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('delivery_time')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
+        </div>
+
         {{-- STATUS --}}
         <div>
             <label for="ds_status" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -148,48 +165,48 @@
             <label for="jo_number" class="block text-sm font-semibold text-gray-700 mb-2">
                 JO Number
             </label>
-            <input type="text" 
-                   id="jo_number" 
-                   name="jo_number" 
-                   value="{{ old('jo_number') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('jo_number') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="jo_number" 
+                     name="jo_number" 
+                     value="{{ old('jo_number') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('jo_number') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="po_number" class="block text-sm font-semibold text-gray-700 mb-2">
                 PO Number
             </label>
-            <input type="text" 
-                   id="po_number" 
-                   name="po_number" 
-                   value="{{ old('po_number') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('po_number') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="po_number" 
+                     name="po_number" 
+                     value="{{ old('po_number') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('po_number') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="customer_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Customer Name
             </label>
-            <input type="text" 
-                   id="customer_name" 
-                   name="customer_name" 
-                   value="{{ old('customer_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('customer_name') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="customer_name" 
+                     name="customer_name" 
+                     value="{{ old('customer_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('customer_name') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="model_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Model Name
             </label>
-            <input type="text" 
-                   id="model_name" 
-                   name="model_name" 
-                   value="{{ old('model_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('model_name') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="model_name" 
+                     name="model_name" 
+                     value="{{ old('model_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('model_name') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div class="md:col-span-2">
@@ -200,31 +217,31 @@
                       name="description" 
                       rows="2" 
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('description') border-red-500 @enderror" 
-                      placeholder="(auto-filled)">{{ old('description') }}</textarea>
+                      readonly>{{ old('description') }}</textarea>
         </div>
 
         <div>
             <label for="dimension" class="block text-sm font-semibold text-gray-700 mb-2">
                 Dimension
             </label>
-            <input type="text" 
-                   id="dimension" 
-                   name="dimension" 
-                   value="{{ old('dimension') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('dimension') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="dimension" 
+                     name="dimension" 
+                     value="{{ old('dimension') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('dimension') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="uom" class="block text-sm font-semibold text-gray-700 mb-2">
                 UOM
             </label>
-            <input type="text" 
-                   id="uom" 
-                   name="uom" 
-                   value="{{ old('uom') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('uom') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="uom" 
+                     name="uom" 
+                     value="{{ old('uom') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('uom') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         {{-- REMARKS --}}
@@ -253,31 +270,26 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endpush
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const $jobOrderSelect = $('#job_order_id');
     
-    // Initialize Select2 with search enabled
+    // Initialize Select2 with search always enabled and robust selection handling
     $jobOrderSelect.select2({
         placeholder: "Search job order by number, product or customer...",
         allowClear: true,
         width: '100%',
-        search: true,
+        minimumResultsForSearch: 0,
         matcher: function(params, data) {
-            if ($.trim(params.term) === '') {
-                return data;
-            }
-            if (typeof data.text === 'undefined') {
-                return null;
-            }
+            if ($.trim(params.term) === '') return data;
+            if (typeof data.text === 'undefined') return null;
             const term = params.term.toLowerCase();
             const text = data.text.toLowerCase();
-            const joNum = ($(data.element).data('jo-number') || '').toLowerCase();
-            const prodCode = ($(data.element).data('product-code') || '').toLowerCase();
-            const customer = ($(data.element).data('customer-name') || '').toLowerCase();
-            
+            const joNum = (data.element && $(data.element).data('jo-number') || '').toString().toLowerCase();
+            const prodCode = (data.element && $(data.element).data('product-code') || '').toString().toLowerCase();
+            const customer = (data.element && $(data.element).data('customer-name') || '').toString().toLowerCase();
             if (text.indexOf(term) > -1 || joNum.indexOf(term) > -1 || prodCode.indexOf(term) > -1 || customer.indexOf(term) > -1) {
                 return data;
             }
@@ -285,62 +297,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // When job order is selected → auto-fill fields (use select2:select event)
-    $jobOrderSelect.on('select2:select', function(e) {
-        const selectedOption = e.params.data;
-        const $selectedElement = $(this).find('option[value="' + selectedOption.id + '"]');
-        
-        if (selectedOption.id) {
-            $('#product_id').val($selectedElement.data('product-id') || '');
-            $('#jo_number').val($selectedElement.data('jo-number') || '');
-            $('#po_number').val($selectedElement.data('po-number') || '');
-            $('#customer_name').val($selectedElement.data('customer-name') || '');
-            $('#model_name').val($selectedElement.data('model-name') || '');
-            $('#description').val($selectedElement.data('description') || '');
-            $('#dimension').val($selectedElement.data('dimension') || '');
-            $('#uom').val($selectedElement.data('uom') || '');
-
-            // Highlight autofilled fields with yellow background for 2.5 seconds
-            ['product_id', 'jo_number', 'po_number', 'customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
-                const $field = $(`#${fieldId}`);
-                if ($field.val() && fieldId !== 'product_id') { // Skip product_id as it's hidden
-                    $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    setTimeout(() => {
-                        $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    }, 2500);
-                }
-            });
-
-            // Visual feedback
-            $jobOrderSelect.next('.select2-container').addClass('ring-2 ring-green-500');
-            setTimeout(() => $jobOrderSelect.next('.select2-container').removeClass('ring-2 ring-green-500'), 1500);
+    // Helper to fill fields from a selected option (uses jQuery to be compatible with Select2)
+    function fillJobOrderFields($select) {
+        const $opt = $select.find('option:selected');
+        const val = $opt.val();
+        if (!val) {
+            $('#product_id, #jo_number, #po_number, #customer_name, #model_name, #description, #dimension, #uom').val('');
+            return;
         }
+
+        const prodId = $opt.attr('data-product-id') || $opt.data('product-id') || $opt.data('productId') || '';
+        const joNum = $opt.attr('data-jo-number') || $opt.data('jo-number') || '';
+        const poNum = $opt.attr('data-po-number') || $opt.data('po-number') || '';
+        const custName = $opt.attr('data-customer-name') || $opt.data('customer-name') || '';
+        const modelName = $opt.attr('data-model-name') || $opt.data('model-name') || '';
+        const desc = $opt.attr('data-description') || $opt.data('description') || '';
+        const dim = $opt.attr('data-dimension') || $opt.data('dimension') || '';
+        const uomVal = $opt.attr('data-uom') || $opt.data('uom') || '';
+
+        $('#product_id').val(prodId);
+        $('#jo_number').val(joNum);
+        $('#po_number').val(poNum);
+        $('#customer_name').val(custName);
+        $('#model_name').val(modelName);
+        $('#description').val(desc);
+        $('#dimension').val(dim);
+        $('#uom').val(uomVal);
+
+        ['jo_number', 'po_number', 'customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
+            const $field = $(`#${fieldId}`);
+            if ($field.val()) {
+                $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
+                setTimeout(() => $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300'), 2500);
+            }
+        });
+    }
+
+    // Bind to Select2 and native change to ensure compatibility
+    $jobOrderSelect.on('change select2:select', function() {
+        fillJobOrderFields($(this));
     });
 
-    // Clear fields when cleared
+    // Clear handler when user clears selection
     $jobOrderSelect.on('select2:clear', function() {
         $('#product_id, #jo_number, #po_number, #customer_name, #model_name, #description, #dimension, #uom').val('');
     });
 
-    // Pre-populate if job order is already selected
-    const selectedOption = $jobOrderSelect.find('option:selected');
-    if (selectedOption.val()) {
-        $('#product_id').val(selectedOption.data('product-id') || '');
-        $('#jo_number').val(selectedOption.data('jo-number') || '');
-        $('#po_number').val(selectedOption.data('po-number') || '');
-        $('#customer_name').val(selectedOption.data('customer-name') || '');
-        $('#model_name').val(selectedOption.data('model-name') || '');
-        $('#description').val(selectedOption.data('description') || '');
-        $('#dimension').val(selectedOption.data('dimension') || '');
-        $('#uom').val(selectedOption.data('uom') || '');
-    }
-
-    });
-
-    // Pre-fill if old input exists (after validation fail)
-    @if(old('job_order_id'))
-        $('#job_order_id').trigger('change');
-    @endif
+    // Pre-populate if job order is already selected (after validation fail)
+    fillJobOrderFields($jobOrderSelect);
 
     // Auto-submit on Enter
     document.querySelectorAll('input, select').forEach(el => {
@@ -353,4 +357,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-@endsection
+@endpush

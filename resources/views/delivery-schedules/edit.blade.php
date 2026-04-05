@@ -123,6 +123,23 @@
             @enderror
         </div>
 
+        {{-- DELIVERY TIME --}}
+        <div>
+            <label for="delivery_time" class="block text-sm font-semibold text-gray-700 mb-2">
+                Delivery Time
+            </label>
+            <input type="time"
+                   id="delivery_time"
+                   name="delivery_time"
+                   value="{{ old('delivery_time', $deliverySchedule->delivery_time) }}"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow @error('delivery_time') border-red-500 ring-2 ring-red-200 @enderror">
+            @error('delivery_time')
+            <p class="mt-2 text-sm text-red-600 flex items-center">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+            </p>
+            @enderror
+        </div>
+
         {{-- STATUS --}}
         <div>
             <label for="ds_status" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -299,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Search by JO number, product code, or customer...',
         allowClear: true,
         width: '100%',
+        minimumResultsForSearch: 0,
         matcher: function(params, data) {
             if ($.trim(params.term) === '') {
                 return data;
@@ -359,4 +377,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-@endsection
+@endpush

@@ -82,6 +82,9 @@ Route::middleware('auth')->group(function () {
     // User search API (used for autocomplete suggestions) — authenticated users
     Route::get('api/users/search', [UserController::class, 'search'])->name('api.users.search');
 
+    // Product details JSON (used by forms to fetch authoritative product master data)
+    Route::get('products/{product}/json', [ProductController::class, 'json'])->name('products.json');
+
     // Products: Admin + Sales can access product masterlist
     Route::middleware('role:admin,sales')->group(function () {
         Route::resource('products', ProductController::class)->except(['show']);
@@ -224,6 +227,8 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:admin,inventory')->group(function () {
             Route::get('/inventory',     [ReportController::class, 'inventory'])    ->name('inventory');
             Route::get('/inventory/pdf', [ReportController::class, 'inventoryPdf'])->name('inventory.pdf');
+            // Inventory aging report
+            Route::get('/aging',         [ReportController::class, 'aging'])       ->name('aging');
         });
 
         // Production Reports
@@ -244,6 +249,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/logistics/pdf', [ReportController::class, 'logisticsPdf'])->name('logistics.pdf');
         });
     });
+
+    // System status notify (dashboard button)
+    Route::post('system-status/notify', [\App\Http\Controllers\SystemStatusController::class, 'notify'])
+        ->name('system-status.notify');
 
     /*
     |--------------------------------------------------------------------------

@@ -171,6 +171,24 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Return JSON details for a product (used by frontend selects to autofill fields).
+     */
+    public function json(Product $product)
+    {
+        $this->authorize('view', $product);
+
+        return response()->json([
+            'id' => $product->id,
+            'product_code' => $product->product_code,
+            'customer_name' => $product->customer_name,
+            'model_name' => $product->model_name,
+            'description' => $product->description,
+            'dimension' => $product->dimension,
+            'uom' => $product->uom,
+        ]);
+    }
+
     public function export()
     {
         $this->authorize('viewAny', Product::class);

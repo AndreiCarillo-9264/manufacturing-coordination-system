@@ -158,9 +158,9 @@
             <tbody class="bg-white divide-y divide-gray-100">
                 @forelse($recentProduction ?? [] as $production)
                 <tr class="hover:bg-green-50 transition-colors duration-150">
-                    <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">{{ $production->jo_number }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 font-medium">{{ $production->product->model_name ?? $production->product->product_code }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">{{ number_format($production->qty) }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">{{ $production->jobOrder->jo_number ?? 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 font-medium">{{ $production->product->model_name ?? $production->product->product_code ?? 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">{{ number_format($production->jobOrder->qty ?? 0) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-gray-600 text-sm">{{ $production->updated_at->format('M d, Y h:i A') }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-green-100 text-green-700 border border-green-300">

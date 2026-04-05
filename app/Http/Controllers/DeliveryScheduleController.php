@@ -89,6 +89,26 @@ class DeliveryScheduleController extends Controller
                 return back()->withInput()->with('error', 'Cannot create delivery: No verified inventory available for this product. Please verify the actual inventory count first.');
             }
 
+            // Prevent creating delivery if requested quantity exceeds available finished goods
+            if (isset($validated['quantity']) && $validated['quantity'] > ($finishedGood->current_qty ?? 0)) {
+                return back()->withInput()->with('error', 'Cannot create delivery: Insufficient verified inventory. Available: ' . ($finishedGood->current_qty ?? 0) . ', Requested: ' . $validated['quantity']);
+            }
+
+            // Check for low stock based on buffer level - reject if stock would fall below buffer after delivery
+            $bufferLevel = $finishedGood->buffer_stocks ?? 0;
+            $currentQty = $finishedGood->current_qty ?? 0;
+            $requestedQty = $validated['quantity'] ?? 0;
+            
+            if ($currentQty - $requestedQty < $bufferLevel) {
+                $remainingAfterDelivery = max(0, $currentQty - $requestedQty);
+                return back()->withInput()->with('error', 
+                    "Cannot create delivery: Stock level would fall below buffer threshold. "
+                    . "Current stock: {$currentQty} pcs, Buffer required: {$bufferLevel} pcs, "
+                    . "Requested quantity: {$requestedQty} pcs, Would remain: {$remainingAfterDelivery} pcs. "
+                    . "Please reduce delivery quantity or check buffer settings."
+                );
+            }
+
             // Auto-fill product details from job order
             $validated['product_id'] = $validated['product_id'] ?? $jobOrder->product_id;
             $validated['product_code'] = $jobOrder->product_code;
@@ -225,7 +245,7 @@ class DeliveryScheduleController extends Controller
     /**
      * Mark delivery schedule as delivered (sets qty_delivered and marks complete)
      */
-    public function markDelivered(DeliverySchedule $deliverySchedule)
+    public function markDelivered(Request $request, DeliverySchedule $deliverySchedule)
     {
         $this->authorize('update', $deliverySchedule);
 
@@ -235,6 +255,28 @@ class DeliveryScheduleController extends Controller
             // Ensure qty_delivered is set (default to scheduled qty)
             if (empty($deliverySchedule->delivered_quantity)) {
                 $deliverySchedule->update(['delivered_quantity' => $deliverySchedule->quantity]);
+            }
+
+            // Time restriction: only allow marking delivered during working hours (08:00 - 17:00)
+            // Allow override for users with admin or logistics role
+            $currentHour = (int) now()->format('H');
+            $user = auth()->user();
+            $canOverride = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'logistics']);
+            if (!$canOverride && ($currentHour < 8 || $currentHour >= 17)) {
+                DB::rollBack();
+                $msg = 'Deliveries can only be marked between 08:00 and 17:00. Current time: ' . now()->format('H:i');
+                if ($request->wantsJson() || $request->ajax() || stripos($request->header('accept', ''), 'application/json') !== false) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return back()->with('error', $msg);
+            }
+
+            // Check finished goods stock before marking delivered
+            $finishedGood = \App\Models\FinishedGood::where('product_id', $deliverySchedule->product_id)->first();
+            $toDeliver = $deliverySchedule->delivered_quantity ?? $deliverySchedule->quantity;
+            if (!$finishedGood || ($finishedGood->current_qty ?? 0) < $toDeliver) {
+                DB::rollBack();
+                return back()->with('error', 'Cannot mark as delivered: insufficient verified inventory. Available: ' . ($finishedGood->current_qty ?? 0) . ', To deliver: ' . $toDeliver);
             }
 
             // Mark as complete (status => 'DELIVERED')
@@ -247,7 +289,7 @@ class DeliveryScheduleController extends Controller
             DB::commit();
 
             // Return JSON for AJAX requests, redirect for regular requests
-            if (request()->wantsJson() || request()->ajax()) {
+            if ($request->wantsJson() || $request->ajax() || stripos($request->header('accept', ''), 'application/json') !== false) {
                 return response()->json([
                     'success' => true,
                     'status' => 'DELIVERED',
@@ -268,7 +310,7 @@ class DeliveryScheduleController extends Controller
             $errorMsg = 'Failed to mark as delivered. Please try again.';
 
             // Return JSON error for AJAX requests
-            if (request()->wantsJson() || request()->ajax()) {
+            if ($request->wantsJson() || $request->ajax() || stripos($request->header('accept', ''), 'application/json') !== false) {
                 return response()->json([
                     'success' => false,
                     'message' => $errorMsg,
@@ -295,7 +337,7 @@ class DeliveryScheduleController extends Controller
             $file = fopen('php://output', 'w');
             fwrite($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             
-            fputcsv($file, ['Delivery Code', 'Job Order', 'Customer Name', 'Product Code', 'Model Name', 'Quantity', 'Delivered Qty', 'Delivery Date', 'Status', 'Reason', 'Created At']);
+            fputcsv($file, ['Delivery Code', 'Job Order', 'Customer Name', 'Product Code', 'Model Name', 'Quantity', 'Delivered Qty', 'Delivery Date', 'Delivery Time', 'Status', 'Reason', 'Created At']);
             
             foreach ($data as $row) {
                 fputcsv($file, [
@@ -307,6 +349,7 @@ class DeliveryScheduleController extends Controller
                     $row->quantity ?? 0,
                     $row->delivered_quantity ?? 0,
                     $row->delivery_date?->format('Y-m-d') ?? '',
+                    $row->delivery_time ?? '',
                     $row->ds_status ?? '',
                     $row->reason ?? '',
                     $row->created_at?->format('Y-m-d H:i:s') ?? '',

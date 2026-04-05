@@ -150,31 +150,31 @@
                 <option value="JO Full" {{ old('jo_status') == 'JO Full' ? 'selected' : '' }}>JO Full</option>
                 <option value="Cancelled" {{ old('jo_status') == 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
             </select>
-        </div>
+        </div>9
 
         {{-- AUTO-FILLED FIELDS --}}
         <div>
             <label for="customer_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Customer Name
             </label>
-            <input type="text" 
-                   id="customer_name" 
-                   name="customer_name" 
-                   value="{{ old('customer_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('customer_name') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="customer_name" 
+                     name="customer_name" 
+                     value="{{ old('customer_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('customer_name') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="model_name" class="block text-sm font-semibold text-gray-700 mb-2">
                 Model Name
             </label>
-            <input type="text" 
-                   id="model_name" 
-                   name="model_name" 
-                   value="{{ old('model_name') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('model_name') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="model_name" 
+                     name="model_name" 
+                     value="{{ old('model_name') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('model_name') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div class="md:col-span-2">
@@ -185,31 +185,31 @@
                       name="description" 
                       rows="2" 
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('description') border-red-500 @enderror" 
-                      placeholder="(auto-filled)">{{ old('description') }}</textarea>
+                      readonly>{{ old('description') }}</textarea>
         </div>
 
         <div>
             <label for="dimension" class="block text-sm font-semibold text-gray-700 mb-2">
                 Dimension
             </label>
-            <input type="text" 
-                   id="dimension" 
-                   name="dimension" 
-                   value="{{ old('dimension') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('dimension') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="dimension" 
+                     name="dimension" 
+                     value="{{ old('dimension') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('dimension') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         <div>
             <label for="uom" class="block text-sm font-semibold text-gray-700 mb-2">
                 UOM
             </label>
-            <input type="text" 
-                   id="uom" 
-                   name="uom" 
-                   value="{{ old('uom') }}" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('uom') border-red-500 @enderror" 
-                   placeholder="(auto-filled)">
+                 <input type="text" 
+                     id="uom" 
+                     name="uom" 
+                     value="{{ old('uom') }}" 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg @error('uom') border-red-500 @enderror" 
+                     readonly>
         </div>
 
         {{-- REMARKS --}}
@@ -238,81 +238,99 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endpush
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("Script started for job order create");
     const $productSelect = $('#product_id');
+    console.log("productSelect found:", $productSelect.length);
     
-    // Initialize Select2 with search enabled
+    // Initialize Select2 and provide robust autofill handling
     $productSelect.select2({
         placeholder: "Search product by code, model or customer...",
         allowClear: true,
         width: '100%',
-        search: true,
+        minimumResultsForSearch: 0,
         matcher: function(params, data) {
-            // Allow searching by product code, model name, and customer
-            if ($.trim(params.term) === '') {
-                return data;
-            }
-            
+            if ($.trim(params.term) === '') return data;
+            if (typeof data.text === 'undefined') return null;
             const term = params.term.toLowerCase();
             const text = (data.text || '').toLowerCase();
-            
-            if (text.indexOf(term) > -1) {
-                return data;
-            }
-            
+            if (text.indexOf(term) > -1) return data;
+            const code = (data.element && $(data.element).data('code') || '').toString().toLowerCase();
+            const customer = (data.element && $(data.element).data('customer') || '').toString().toLowerCase();
+            const model = (data.element && $(data.element).data('model') || '').toString().toLowerCase();
+            if (code.indexOf(term) > -1 || customer.indexOf(term) > -1 || model.indexOf(term) > -1) return data;
             return null;
         }
     });
 
-    // When product is selected → auto-fill fields (use select2:select event)
-    $productSelect.on('select2:select', function(e) {
-        const selectedOption = e.params.data;
-        const $selectedElement = $(this).find('option[value="' + selectedOption.id + '"]');
-        
-        if (selectedOption.id) {
-            $('#customer_name').val($selectedElement.data('customer') || '');
-            $('#model_name').val($selectedElement.data('model') || '');
-            $('#description').val($selectedElement.data('description') || '');
-            $('#dimension').val($selectedElement.data('dimension') || '');
-            $('#uom').val($selectedElement.data('uom') || '');
+    console.log("Select2 initialized?", $productSelect.hasClass('select2-hidden-accessible'));
 
-            // Highlight autofilled fields with yellow background for 2.5 seconds
-            ['customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
-                const $field = $(`#${fieldId}`);
-                if ($field.val()) {
-                    $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    setTimeout(() => {
-                        $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
-                    }, 2500);
-                }
+    function fillProductFields($select) {
+        const $opt = $select.find('option:selected');
+        const val = $opt.val();
+        if (!val) return $('#customer_name, #model_name, #description, #dimension, #uom').val('');
+        let custName = $opt.attr('data-customer') || $opt.data('customer') || '';
+        let modelName = $opt.attr('data-model') || $opt.data('model') || '';
+        let desc = $opt.attr('data-description') || $opt.data('description') || '';
+        let dim = $opt.attr('data-dimension') || $opt.data('dimension') || '';
+        let uomVal = $opt.attr('data-uom') || $opt.data('uom') || '';
+
+        // If the option lacks detailed data (e.g., newly added product), fetch authoritative data
+        if (!custName && val) {
+            fetch(`{{ url('products') }}/${val}/json`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                credentials: 'same-origin'
+            })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(data => {
+                custName = data.customer_name || '';
+                modelName = data.model_name || '';
+                desc = data.description || '';
+                dim = data.dimension || '';
+                uomVal = data.uom || '';
+
+                $('#customer_name').val(custName);
+                $('#model_name').val(modelName);
+                $('#description').val(desc);
+                $('#dimension').val(dim);
+                $('#uom').val(uomVal);
+            })
+            .catch(() => {
+                // silence failures; leave fields as-is
             });
-
-            // Visual feedback on dropdown
-            $productSelect.next('.select2-container').addClass('ring-2 ring-green-500');
-            setTimeout(() => $productSelect.next('.select2-container').removeClass('ring-2 ring-green-500'), 1500);
+        } else {
+            $('#customer_name').val(custName);
+            $('#model_name').val(modelName);
+            $('#description').val(desc);
+            $('#dimension').val(dim);
+            $('#uom').val(uomVal);
         }
-    });
 
-    // Clear fields when product is cleared
-    $productSelect.on('select2:clear', function() {
-        $('#customer_name, #model_name, #description, #dimension, #uom').val('');
-    });
+        ['customer_name', 'model_name', 'description', 'dimension', 'uom'].forEach(fieldId => {
+            const $field = $(`#${fieldId}`);
+            if ($field.val()) {
+                $field.addClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300');
+                setTimeout(() => $field.removeClass('bg-yellow-100 border-yellow-400 ring-2 ring-yellow-300'), 2500);
+            }
+        });
 
-    // Pre-fill if old input exists (after validation fail)
+        setTimeout(() => {
+            const container = document.querySelector('.select2-container[aria-labelledby="product_id"]');
+            if (container) {
+                container.classList.add('ring-2', 'ring-green-500');
+                setTimeout(() => container.classList.remove('ring-2', 'ring-green-500'), 1500);
+            }
+        }, 0);
+    }
+
+    $productSelect.on('change select2:select', function() { fillProductFields($(this)); });
+    $productSelect.on('select2:clear', function() { $('#customer_name, #model_name, #description, #dimension, #uom').val(''); });
+
     @if(old('product_id'))
         $productSelect.val('{{ old('product_id') }}').trigger('change');
-        // Manually trigger autofill
-        const $oldOption = $productSelect.find('option[value="{{ old('product_id') }}"]');
-        if ($oldOption.length) {
-            $('#customer_name').val($oldOption.data('customer') || '');
-            $('#model_name').val($oldOption.data('model') || '');
-            $('#description').val($oldOption.data('description') || '');
-            $('#dimension').val($oldOption.data('dimension') || '');
-            $('#uom').val($oldOption.data('uom') || '');
-        }
     @endif
 
     // Auto-submit on Enter
@@ -326,4 +344,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-@endsection
+@endpush

@@ -330,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Search by product code, model, or customer...',
         allowClear: true,
         width: '100%',
+        minimumResultsForSearch: 0,
         matcher: function(params, data) {
             if ($.trim(params.term) === '') {
                 return data;
@@ -387,4 +388,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-@endsection
+@endpush

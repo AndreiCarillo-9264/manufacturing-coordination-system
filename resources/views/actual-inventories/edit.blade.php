@@ -263,7 +263,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 for searchable dropdown
     $('#product_id').select2({
         placeholder: 'Search product code...',
-        allowClear: true
+        allowClear: true,
+        minimumResultsForSearch: 0
     });
 
     // Preload products data
@@ -294,4 +295,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-@endsection
+@endpush

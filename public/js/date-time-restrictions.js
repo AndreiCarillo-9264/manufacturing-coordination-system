@@ -67,6 +67,10 @@
         const todayString = getTodayDateString();
         const currentTimeString = getCurrentTimeString();
 
+        // Delivery allowed window
+        const DELIVERY_MIN = '08:00';
+        const DELIVERY_MAX = '17:00';
+
         timeInputs.forEach(timeInput => {
             // Find associated date input (usually nearby in the DOM)
             const dateInput = findNearbyDateInput(timeInput);
@@ -76,12 +80,26 @@
                     const selectedDate = dateInput.value;
                     
                     if (selectedDate && selectedDate === todayString) {
-                        // For today's date, restrict to current time or later
-                        timeInput.setAttribute('min', currentTimeString);
-                        console.log('[DateRestrictions] Time restricted to today:', currentTimeString);
+                        // For today's date, earliest allowed is the later of current time and delivery start
+                        const effectiveMin = currentTimeString > DELIVERY_MIN ? currentTimeString : DELIVERY_MIN;
+                        timeInput.setAttribute('min', effectiveMin);
+                        console.log('[DateRestrictions] Time min for today set to:', effectiveMin);
                     } else if (selectedDate && selectedDate > todayString) {
-                        // For future dates, allow any time
-                        timeInput.removeAttribute('min');
+                        // For future dates, restrict to delivery window
+                        timeInput.setAttribute('min', DELIVERY_MIN);
+                        console.log('[DateRestrictions] Time min for future date set to delivery start:', DELIVERY_MIN);
+                    }
+
+                    // For delivery-specific fields, also enforce a max time
+                    // Detect if this time input is part of a delivery form by checking nearby date input id/name
+                    const nameHints = [dateInput.id || '', dateInput.name || '', timeInput.id || '', timeInput.name || ''];
+                    const isDeliveryField = nameHints.join(' ').toLowerCase().includes('delivery') || nameHints.join(' ').toLowerCase().includes('dr') || nameHints.join(' ').toLowerCase().includes('received');
+                    if (isDeliveryField) {
+                        timeInput.setAttribute('max', DELIVERY_MAX);
+                        console.log('[DateRestrictions] Delivery window max applied:', DELIVERY_MAX);
+                    } else {
+                        // non-delivery fields keep no max by default
+                        timeInput.removeAttribute('max');
                     }
                 };
 
@@ -95,10 +113,32 @@
                 timeInput.addEventListener('change', function() {
                     const selectedDate = dateInput.value;
                     const selectedTime = this.value;
-                    
-                    if (selectedDate === todayString && selectedTime < currentTimeString) {
-                        this.value = currentTimeString;
-                        showTimeWarning(this);
+                    // If this is a delivery-related time, ensure it is inside delivery window
+                    const nameHints = [dateInput.id || '', dateInput.name || '', timeInput.id || '', timeInput.name || ''];
+                    const isDeliveryField = nameHints.join(' ').toLowerCase().includes('delivery') || nameHints.join(' ').toLowerCase().includes('dr') || nameHints.join(' ').toLowerCase().includes('received');
+
+                    if (isDeliveryField) {
+                        // Compute effective min for today
+                        let effectiveMin = DELIVERY_MIN;
+                        if (selectedDate === todayString) {
+                            effectiveMin = currentTimeString > DELIVERY_MIN ? currentTimeString : DELIVERY_MIN;
+                        }
+                        if (selectedTime < effectiveMin) {
+                            this.value = effectiveMin;
+                            showTimeWindowWarning(this, `Deliveries allowed from ${DELIVERY_MIN} to ${DELIVERY_MAX}. Using ${effectiveMin}.`);
+                            return;
+                        }
+                        if (selectedTime > DELIVERY_MAX) {
+                            this.value = DELIVERY_MAX;
+                            showTimeWindowWarning(this, `Deliveries allowed from ${DELIVERY_MIN} to ${DELIVERY_MAX}. Using ${DELIVERY_MAX}.`);
+                            return;
+                        }
+                    } else {
+                        // Fallback behavior for non-delivery time inputs (existing logic)
+                        if (selectedDate === todayString && selectedTime < currentTimeString) {
+                            this.value = currentTimeString;
+                            showTimeWarning(this);
+                        }
                     }
                 });
             }
@@ -165,6 +205,23 @@
             toast.remove();
             delete element.dataset.warningShown;
         }, 3000);
+    }
+
+    // Show warning toast when user picks time outside delivery window
+    function showTimeWindowWarning(element, message) {
+        if (element.dataset.warningShown) return;
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center animate-fade-in';
+        toast.innerHTML = `
+            <i class="fas fa-exclamation-triangle mr-3 text-lg"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        document.body.appendChild(toast);
+        element.dataset.warningShown = true;
+        setTimeout(() => {
+            toast.remove();
+            delete element.dataset.warningShown;
+        }, 4000);
     }
 
     // Initialize on DOM ready

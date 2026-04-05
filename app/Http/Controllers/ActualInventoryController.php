@@ -48,7 +48,7 @@ class ActualInventoryController extends Controller
                     $query->whereBetween('fg_quantity', [100, 500]);
                     break;
                 case 'high':
-                    $query->where('fg_quantity', '>', 500);
+                    $query->where('fg_quantity', '>', 499);
                     break;
             }
         }

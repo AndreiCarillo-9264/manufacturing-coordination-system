@@ -171,6 +171,12 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        // Recent completed production (finished goods entries)
+        $recentProduction = FinishedGood::with(['jobOrder', 'product'])
+            ->latest('created_at')
+            ->limit(10)
+            ->get();
+
         $transfersByStatus = InventoryTransfer::select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
@@ -194,6 +200,7 @@ class DashboardController extends Controller
             'backlogQuantity',
             'awaitingJobs',
             'recentTransfers',
+            'recentProduction',
             'transfersByStatus',
             'statuses',
             'productionByWeek'
@@ -233,7 +240,17 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $totalInventoryValue = FinishedGood::sum('end_amount');   // or current_qty × selling_price if not maintained
+        // Ensure KPI variable name used by the view: $totalValue
+        $totalValue = FinishedGood::sum('end_amount');
+        if (!$totalValue || $totalValue == 0) {
+            // fallback: compute from current_qty * selling_price when end_amount not maintained
+            try {
+                $totalValue = (float) FinishedGood::join('products', 'finished_goods.product_id', '=', 'products.id')
+                    ->sum(DB::raw('finished_goods.current_qty * COALESCE(products.selling_price, 0)'));
+            } catch (\Exception $e) {
+                $totalValue = 0;
+            }
+        }
 
         // Aging – using the fields you already have
         $agingData = [
@@ -263,16 +280,18 @@ class DashboardController extends Controller
             ->sort()
             ->values();
 
-        // Stock movement data (last 7 days)
-        $stockMovementData = collect([
-            (object)['date' => now()->subDays(6)->format('Y-m-d'), 'stock_in' => 5, 'stock_out' => 2],
-            (object)['date' => now()->subDays(5)->format('Y-m-d'), 'stock_in' => 8, 'stock_out' => 3],
-            (object)['date' => now()->subDays(4)->format('Y-m-d'), 'stock_in' => 6, 'stock_out' => 4],
-            (object)['date' => now()->subDays(3)->format('Y-m-d'), 'stock_in' => 10, 'stock_out' => 5],
-            (object)['date' => now()->subDays(2)->format('Y-m-d'), 'stock_in' => 7, 'stock_out' => 3],
-            (object)['date' => now()->subDays(1)->format('Y-m-d'), 'stock_in' => 9, 'stock_out' => 4],
-            (object)['date' => now()->format('Y-m-d'), 'stock_in' => 12, 'stock_out' => 6],
-        ]);
+        // Stock movement data (last 7 days) - compute real values and default to zero when none
+        $stockMovementData = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('Y-m-d');
+            $stockIn = InventoryTransfer::whereDate('date_received', $date)->sum('quantity_received') ?: 0;
+            $stockOut = DeliverySchedule::whereDate('delivery_date', $date)->where('ds_status', 'DELIVERED')->sum('delivered_quantity') ?: 0;
+            $stockMovementData->push((object)[
+                'date' => $date,
+                'stock_in' => (int) $stockIn,
+                'stock_out' => (int) $stockOut,
+            ]);
+        }
 
         return view('dashboard.inventory', compact(
             'totalProducts',
@@ -284,7 +303,7 @@ class DashboardController extends Controller
             'lowStockProducts',
             'inventoryItems',
             'unverifiedInventories',
-            'totalInventoryValue',
+            'totalValue',
             'agingData',
             'recentActivities',
             'customers',
@@ -312,8 +331,8 @@ class DashboardController extends Controller
                             + \App\Models\EndorseToLogistic::where('status', 'completed')->count();
 
         // Combined delivery schedules (recent + delayed) - exclude delivered entries, with endorsement counts
+        // Include all delivery schedules (keep records even after delivered) so dashboard shows full history
         $deliverySchedulesCombined = DeliverySchedule::with(['product', 'jobOrder', 'endorseToLogistics'])
-            ->where('ds_status', '!=', 'DELIVERED')
             ->latest('delivery_date')
             ->limit(20)
             ->get()
@@ -330,6 +349,13 @@ class DashboardController extends Controller
             ->groupBy('ds_status')
             ->pluck('count', 'ds_status')
             ->toArray();
+
+        // Recent completed deliveries for quick access
+        $recentCompletedDeliveries = DeliverySchedule::with(['product', 'jobOrder', 'jobOrder.encodedBy'])
+            ->where('ds_status', 'DELIVERED')
+            ->latest('delivery_date')
+            ->limit(10)
+            ->get();
 
         // keep delayedList for compatibility; it's a subset of deliverySchedulesCombined
         $delayedList = $deliverySchedulesCombined->where('delivery_date', '<', today())->values();
@@ -376,6 +402,7 @@ class DashboardController extends Controller
             'delayedList',
             'endorsementsCombined',
             'deliverySchedulesCombined',
+            'recentCompletedDeliveries',
             'pendingApprovalsCount',
             'approvedCount',
             'endorsementsPending',

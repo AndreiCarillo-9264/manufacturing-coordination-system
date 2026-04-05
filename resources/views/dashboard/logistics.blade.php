@@ -248,6 +248,49 @@
 
     <!-- Logistics Endorsements -->
     <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+
+        <!-- Recent Completed Deliveries -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300 mb-6">
+            <div class="p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                        <i class="fas fa-check-circle text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">Recent Completed Deliveries</h3>
+                        <p class="text-sm text-gray-500">Recently completed delivery schedules</p>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Delivered At</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Qty</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Delivered By</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($recentCompletedDeliveries ?? [] as $d)
+                        <tr class="hover:bg-emerald-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $d->updated_at?->format('M d, Y H:i') ?? ($d->delivery_date?->format('M d, Y') ?? '—') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ $d->product?->model_name ?? $d->product?->product_code ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">{{ number_format($d->delivered_quantity ?? $d->quantity ?? 0) }} {{ $d->uom ?? '' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $d->delivered_by_name ?? $d->jobOrder?->encodedBy?->name ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $d->ds_code ?? $d->delivery_code ?? '—' }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">No completed deliveries found</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <div class="p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3 shadow-md">

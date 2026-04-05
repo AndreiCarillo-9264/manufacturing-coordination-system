@@ -66,6 +66,8 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0 z-10">
                 <tr>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap w-8">
+                    </th>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                         Timestamp
                     </th>
@@ -85,7 +87,10 @@
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
                 @forelse($activityLogs as $log)
-                <tr class="hover:bg-blue-50/30 transition-colors">
+                <tr class="hover:bg-blue-50/30 transition-colors cursor-pointer" onclick="toggleDetails(event, 'details-{{ $log->id }}')">
+                    <td class="px-4 py-4 whitespace-nowrap text-center">
+                        <i class="fas fa-chevron-down text-gray-400 text-sm toggle-icon"></i>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ $log->created_at->format('M d, Y h:i A') }}</div>
                     </td>
@@ -115,6 +120,106 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right">
                         <div class="text-sm font-mono text-gray-600">#{{ $log->subject_id ?? 'N/A' }}</div>
+                    </td>
+                </tr>
+                <!-- DETAILED INFORMATION ROW -->
+                <tr class="hidden details-row" id="details-{{ $log->id }}">
+                    <td colspan="6" class="px-6 py-6 bg-gray-50">
+                        <div class="space-y-6">
+                            <!-- Description -->
+                            @if($log->description)
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                                <p class="text-sm text-gray-900">{{ $log->description }}</p>
+                            </div>
+                            @endif
+
+                            <!-- Request Details -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                @if($log->method)
+                                <div>
+                                    <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">HTTP Method</h4>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium {{ 
+                                        $log->method === 'POST' ? 'bg-green-100 text-green-800' : 
+                                        ($log->method === 'PUT' || $log->method === 'PATCH' ? 'bg-blue-100 text-blue-800' : 
+                                        ($log->method === 'DELETE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')) 
+                                    }}">
+                                        {{ $log->method }}
+                                    </span>
+                                </div>
+                                @endif
+
+                                @if($log->ip_address)
+                                <div>
+                                    <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">IP Address</h4>
+                                    <p class="text-sm font-mono text-gray-900 break-all">{{ $log->ip_address }}</p>
+                                </div>
+                                @endif
+                            </div>
+
+                            <!-- URL -->
+                            @if($log->url)
+                            <div>
+                                <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">Request URL</h4>
+                                <p class="text-sm text-gray-900 break-all font-mono text-xs">{{ $log->url }}</p>
+                            </div>
+                            @endif
+
+                            <!-- User Agent -->
+                            @if($log->user_agent)
+                            <div>
+                                <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">User Agent</h4>
+                                <p class="text-sm text-gray-700 break-all">{{ $log->user_agent }}</p>
+                            </div>
+                            @endif
+
+                            <!-- Changes (Old vs New Values) -->
+                            @if($log->old_values || $log->new_values)
+                            <div class="border-t pt-4">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-4">Changes Made</h4>
+                                
+                                @php
+                                    $allKeys = array_unique(array_merge(
+                                        array_keys($log->old_values ?? []),
+                                        array_keys($log->new_values ?? [])
+                                    ));
+                                @endphp
+
+                                <div class="space-y-3">
+                                    @forelse($allKeys as $key)
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-white rounded border border-gray-200">
+                                        <div>
+                                            <h5 class="text-xs font-semibold text-gray-600 uppercase mb-1">Field</h5>
+                                            <p class="text-sm font-medium text-gray-900">{{ ucwords(str_replace('_', ' ', $key)) }}</p>
+                                        </div>
+                                        <div>
+                                            <h5 class="text-xs font-semibold text-red-600 uppercase mb-1">Old Value</h5>
+                                            <p class="text-sm text-gray-700 break-words">
+                                                @if(is_array($log->old_values[$key] ?? null))
+                                                    <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{ json_encode($log->old_values[$key]) }}</code>
+                                                @else
+                                                    {{ $log->old_values[$key] ?? '—' }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h5 class="text-xs font-semibold text-green-600 uppercase mb-1">New Value</h5>
+                                            <p class="text-sm text-gray-700 break-words">
+                                                @if(is_array($log->new_values[$key] ?? null))
+                                                    <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{ json_encode($log->new_values[$key]) }}</code>
+                                                @else
+                                                    {{ $log->new_values[$key] ?? '—' }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                    @empty
+                                    <p class="text-sm text-gray-500">No changes recorded</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                            @endif
+                        </div>
                     </td>
                 </tr>
                 @empty
@@ -159,5 +264,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function toggleDetails(event, detailsId) {
+    // Prevent toggling when clicking on links
+    if (event.target.closest('a')) {
+        return;
+    }
+    
+    const detailsRow = document.getElementById(detailsId);
+    const iconElement = event.currentTarget.querySelector('.toggle-icon');
+    
+    if (detailsRow.classList.contains('hidden')) {
+        detailsRow.classList.remove('hidden');
+        detailsRow.classList.add('block');
+        iconElement.classList.add('rotate-180');
+    } else {
+        detailsRow.classList.add('hidden');
+        detailsRow.classList.remove('block');
+        iconElement.classList.remove('rotate-180');
+    }
+}
 </script>
 @endsection

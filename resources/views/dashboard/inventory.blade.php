@@ -411,11 +411,21 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('stockMovementChart')?.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+        console.log('Stock movement chart canvas not found');
+        return;
+    }
 
     const labels = @json($stockMovementData->pluck('date') ?? []);
     const stockIn = @json($stockMovementData->pluck('stock_in') ?? []);
     const stockOut = @json($stockMovementData->pluck('stock_out') ?? []);
+
+    console.log('Stock movement data:', { labels, stockIn, stockOut });
+
+    if (labels.length === 0) {
+        console.log('No stock movement data available');
+        return;
+    }
 
     new Chart(ctx, {
         type: 'line',

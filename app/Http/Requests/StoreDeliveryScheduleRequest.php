@@ -20,6 +20,7 @@ class StoreDeliveryScheduleRequest extends FormRequest
             'ds_status' => 'nullable|in:BACKLOG,ON SCHEDULE,DELIVERED,CANCELLED',
             'ppqc_status' => 'nullable|string|max:255',
             'delivery_date' => 'required|date|after_or_equal:today',
+            'delivery_time' => 'nullable|date_format:H:i',
             'week_number' => 'nullable|integer|min:1|max:53',
             'date_encoded' => 'nullable|date',
             'quantity' => 'required|integer|min:1',
@@ -71,5 +72,24 @@ class StoreDeliveryScheduleRequest extends FormRequest
                 $this->merge([$key => $value]);
             }
         }
+
+        // Enforce delivery time window (08:00 - 17:00) if provided
+        if ($this->delivery_time) {
+            $time = \DateTime::createFromFormat('H:i', $this->delivery_time);
+            if (!$time) return;
+            $hourMinute = $time->format('H:i');
+            if ($hourMinute < '08:00' || $hourMinute > '17:00') {
+                $this->merge(['_delivery_time_error' => true]);
+            }
+        }
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            if ($this->has('_delivery_time_error')) {
+                $validator->errors()->add('delivery_time', 'Delivery time must be between 08:00 and 17:00.');
+            }
+        });
     }
 }

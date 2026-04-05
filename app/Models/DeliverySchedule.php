@@ -36,6 +36,7 @@ class DeliverySchedule extends Model
         
         // Delivery Schedule specific
         'delivery_date',
+        'delivery_time',
         'week_number',
         'quantity',
         'max_quantity',

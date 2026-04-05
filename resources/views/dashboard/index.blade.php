@@ -50,6 +50,14 @@
     </div>
 </div>
 
+<!-- System Status Notify Button -->
+<div class="mb-6">
+    <button id="systemStatusBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow">
+        Notify Admin: System Status
+    </button>
+    <span id="systemStatusSpinner" class="ml-3 hidden text-sm text-gray-600">Sending...</span>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- Ordered vs Produced vs Delivered Chart -->
     <div class="bg-white rounded-2xl shadow-md p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-300">
@@ -338,6 +346,33 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+});
+</script>
+<script>
+document.getElementById('systemStatusBtn')?.addEventListener('click', async function() {
+    const btn = this;
+    const spinner = document.getElementById('systemStatusSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    try {
+        const res = await fetch('{{ route('system-status.notify') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        window.showToast(data.message || 'Notification sent', data.success ? 'success' : 'error');
+    } catch (err) {
+        console.error('System status notify failed', err);
+        window.showToast('Failed to notify admins', 'error');
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+    }
 });
 </script>
 @endpush

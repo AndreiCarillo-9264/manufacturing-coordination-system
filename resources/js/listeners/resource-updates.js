@@ -101,6 +101,31 @@ window.addEventListener('job-order.created', (e) => {
     if (rows.length > 16) {
         tbody.removeChild(tbody.lastChild);
     }
+
+    // Also ensure any job-order selects on open forms get updated so autofill helpers work
+    try {
+        const $ = window.jQuery;
+        if ($) {
+            const selects = $('select#job_order_id');
+            selects.each(function() {
+                const $sel = $(this);
+                const exists = $sel.find(`option[value="${payload.id}"]`).length > 0;
+                const text = (payload.jo_number || payload.id) + (payload.product ? ' - ' + payload.product : '');
+                if (!exists) {
+                    const opt = new Option(text, payload.id, false, false);
+                    $sel.append(opt);
+                    const $opt = $sel.find(`option[value="${payload.id}"]`);
+                    $opt.attr('data-jo-number', payload.jo_number || '');
+                    $opt.attr('data-product', payload.product || '');
+                    $opt.attr('data-quantity', payload.quantity || '');
+                }
+                // Trigger change so any Select2/autofill handlers run
+                $sel.trigger('change');
+            });
+        }
+    } catch (err) {
+        console.warn('job-order select update failed', err);
+    }
 });
 
 // Highlight row when status changes
@@ -114,6 +139,35 @@ window.addEventListener('job-order.status-changed', (e) => {
             row.classList.add('bg-yellow-50');
             setTimeout(() => row.classList.remove('bg-yellow-50'), 3000);
         }
+    }
+});
+
+// When finished goods are updated, refresh product selects so create forms receive latest product info
+window.addEventListener('finished-good.updated', (e) => {
+    const payload = e.detail;
+    try {
+        const $ = window.jQuery;
+        if ($) {
+            const selects = $('select#product_id');
+            selects.each(function() {
+                const $sel = $(this);
+                const exists = $sel.find(`option[value="${payload.id}"]`).length > 0;
+                const text = (payload.product || payload.model_name || payload.id);
+                if (!exists) {
+                    const opt = new Option(text, payload.id, false, false);
+                    $sel.append(opt);
+                    const $opt = $sel.find(`option[value="${payload.id}"]`);
+                    $opt.attr('data-product-code', payload.product || '');
+                    $opt.attr('data-model-name', payload.model_name || '');
+                    $opt.attr('data-description', payload.description || '');
+                    $opt.attr('data-dimension', payload.dimension || '');
+                    $opt.attr('data-uom', payload.uom || '');
+                }
+                $sel.trigger('change');
+            });
+        }
+    } catch (err) {
+        console.warn('product select update failed', err);
     }
 });
 

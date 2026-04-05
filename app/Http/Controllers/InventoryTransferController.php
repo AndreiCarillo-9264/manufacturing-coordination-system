@@ -18,7 +18,7 @@ class InventoryTransferController extends Controller
     {
         $this->authorize('viewAny', InventoryTransfer::class);
 
-        $query = InventoryTransfer::with(['jobOrder.product', 'product', 'receivedBy']);
+        $query = InventoryTransfer::with(['jobOrder.product', 'product', 'receivedBy', 'encodedByUser']);
 
         // Search
         if ($request->filled('search')) {
@@ -190,7 +190,7 @@ class InventoryTransferController extends Controller
     {
         $this->authorize('viewAny', InventoryTransfer::class);
 
-        $data = InventoryTransfer::with('jobOrder', 'product')->get();
+        $data = InventoryTransfer::with('jobOrder', 'product', 'encodedByUser', 'receivedBy')->get();
         
         $headers = [
             'Content-Type' => 'text/csv; charset=utf-8',
@@ -213,7 +213,7 @@ class InventoryTransferController extends Controller
                     $row->from_location ?? '',
                     $row->to_location ?? '',
                     $row->transfer_date?->format('Y-m-d') ?? '',
-                    $row->transferred_by ?? '',
+                    $row->transfer_by ?? ($row->encodedByUser?->name) ?? '',
                     $row->notes ?? '',
                     $row->created_at?->format('Y-m-d H:i:s') ?? '',
                 ]);

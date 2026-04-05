@@ -22,8 +22,12 @@
         {{ $slot }}
 
         <div class="flex justify-end gap-4 pt-6 border-t">
-            <a href="{{ $cancel }}" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</a>
-            <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">{{ $submit }}</button>
+            @if(isset($footer) && trim($footer) !== '')
+                {{ $footer }}
+            @else
+                <a href="{{ $cancel }}" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</a>
+                <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">{{ $submit }}</button>
+            @endif
         </div>
     </form>
 </div>
