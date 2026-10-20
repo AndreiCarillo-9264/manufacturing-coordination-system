@@ -12,9 +12,9 @@ This project is a manufacturing coordination system using Laravel 12, Livewire, 
 
 ## 👥 Team Members
 
-- Carillo, Andrei Christopher
-- Nebreja, Brad Josh
-- Prades, Justine James
+- **Carillo, Andrei Christopher — Lead Developer (Backend):** Led backend development, including database design, core workflows, role-based access, reports, data imports and exports, and feature tests.
+- **Prades, Justine James — Frontend & AI Assistant:** Developed frontend features and the AI assistant chat interface.
+- **Nebreja, Brad Josh — Frontend & Documentation:** Developed frontend features and prepared project documentation.
 
 ---
 
